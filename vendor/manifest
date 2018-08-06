@@ -1,0 +1,107 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/BurntSushi/toml",
+			"repository": "https://github.com/BurntSushi/toml",
+			"revision": "a368813c5e648fee92e5f6c30e3944ff9d5e8895",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/andygrunwald/go-jira",
+			"repository": "https://github.com/andygrunwald/go-jira",
+			"revision": "8201aaa4d4d5736a614b85f8692bfd31fdfb0fe5",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/boltdb/bolt",
+			"repository": "https://github.com/boltdb/bolt",
+			"revision": "fd01fc79c553a8e99d512a07e8e0c63d4a3ccfc5",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/fatih/structs",
+			"repository": "https://github.com/fatih/structs",
+			"revision": "ebf56d35bba727c68ac77f56f2fcf90b181851aa",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/google/go-querystring/query",
+			"repository": "https://github.com/google/go-querystring",
+			"revision": "53e6ce116135b80d037921a7fdd5138cf32d7a8a",
+			"branch": "master",
+			"path": "/query"
+		},
+		{
+			"importpath": "github.com/jessevdk/go-flags",
+			"repository": "https://github.com/jessevdk/go-flags",
+			"revision": "1c38ed7ad0cc3d9e66649ac398c30e45f395c4eb",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/mattn/go-runewidth",
+			"repository": "https://github.com/mattn/go-runewidth",
+			"revision": "ce7b0b5c7b45a81508558cd1dba6bb1e4ddb51bb",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/olekukonko/tablewriter",
+			"repository": "https://github.com/olekukonko/tablewriter",
+			"revision": "d4647c9c7a84d847478d890b816b7d8b62b0b279",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/pkg/errors",
+			"repository": "https://github.com/pkg/errors",
+			"revision": "816c9085562cd7ee03e7f8188a1cfd942858cded",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/trivago/tgo/tcontainer",
+			"repository": "https://github.com/trivago/tgo",
+			"revision": "e4d1ddd28c17dd89ed26327cf69fded22060671b",
+			"branch": "master",
+			"path": "/tcontainer"
+		},
+		{
+			"importpath": "github.com/trivago/tgo/treflect",
+			"repository": "https://github.com/trivago/tgo",
+			"revision": "e4d1ddd28c17dd89ed26327cf69fded22060671b",
+			"branch": "master",
+			"path": "/treflect"
+		},
+		{
+			"importpath": "github.com/xanzy/go-gitlab",
+			"repository": "https://github.com/xanzy/go-gitlab",
+			"revision": "4a664a5088ebb2d490b5a3516fb8f42df463729b",
+			"branch": "master"
+		},
+		{
+			"importpath": "golang.org/x/crypto/ssh/terminal",
+			"repository": "https://go.googlesource.com/crypto",
+			"revision": "56440b844dfe139a8ac053f4ecac0b20b79058f4",
+			"branch": "master",
+			"path": "/ssh/terminal"
+		},
+		{
+			"importpath": "golang.org/x/net/context",
+			"repository": "https://go.googlesource.com/net",
+			"revision": "f4c29de78a2a91c00474a2e689954305c350adf9",
+			"branch": "master",
+			"path": "/context"
+		},
+		{
+			"importpath": "golang.org/x/oauth2",
+			"repository": "https://go.googlesource.com/oauth2",
+			"revision": "3d292e4d0cdc3a0113e6d207bb137145ef1de42f",
+			"branch": "master"
+		},
+		{
+			"importpath": "golang.org/x/sys/unix",
+			"repository": "https://go.googlesource.com/sys",
+			"revision": "0ffbfd41fbef8ffcf9b62b0b0aa3a5873ed7a4fe",
+			"branch": "master",
+			"path": "/unix"
+		}
+	]
+}
