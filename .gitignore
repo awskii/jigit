@@ -1,5 +1,6 @@
 /.idea/*
-/.bin/*
-/.pkg/*
+/bin/*
+/pkg/*
 db
 .jigit
+/vendor/src/*
