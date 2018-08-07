@@ -5,14 +5,15 @@ import (
 	"config"
 	"encoding/gob"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"os/exec"
 	"persistent"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"less"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
@@ -56,9 +57,9 @@ func proceedGit(fl Subcmd) error {
 			return err
 		}
 
-		return git.GetDetailedProjectIssue(projectID, issueID[0])
+		return git.DetailedProjectIssue(projectID, issueID[0])
 	case fl.Assigned:
-		return git.ListGitIssues(fl.All)
+		return git.ListAssignedIssues(fl.All)
 	case fl.Projects:
 		return git.ListProjects(fl.Limit, fl.NoCache)
 	}
@@ -116,16 +117,15 @@ func (git *Git) ListProjects(limit int, noCache bool) error {
 		if err = git.InitClient(); err != nil {
 			return err
 		}
-		var (
-			resp *gitlab.Response
-			err  error
-		)
-		opt := new(gitlab.ListProjectsOptions)
-		//opt.Owned = gitlab.Bool(true)
-		opt.Membership = gitlab.Bool(true)
-		opt.OrderBy = gitlab.String("last_activity_at")
+
+		opt := &gitlab.ListProjectsOptions{
+			//Owned : gitlab.Bool(true),
+			Membership: gitlab.Bool(true),
+			OrderBy:    gitlab.String("last_activity_at"),
+		}
 		opt.PerPage = limit // todo make configurable
 
+		var resp *gitlab.Response
 		projects, resp, err = git.client.Projects.ListProjects(opt)
 		if err != nil {
 			return err
@@ -181,7 +181,7 @@ func (git *Git) ListProjectIssues(projectID int, all bool) error {
 	return nil
 }
 
-func (git *Git) ListGitIssues(all bool) error {
+func (git *Git) ListAssignedIssues(all bool) error {
 	git.InitClient()
 	fmt.Printf("Fetching GitLab issues...\n")
 	opt := new(gitlab.ListIssuesOptions)
@@ -196,7 +196,8 @@ func (git *Git) ListGitIssues(all bool) error {
 		fmt.Printf("Request ended with %d %s", resp.StatusCode, resp.Status)
 		return errors.New("bad response")
 	}
-	fmt.Printf("Fetched %d issues.\n\n", len(issues))
+	fmt.Printf("Fetched %d %s.\n\n", len(issues),
+		PluralWord(len(issues), "issue", "issues"))
 	for _, issue := range issues {
 		fmt.Printf(" #%5d at [%d] (%s) - %s\n",
 			issue.IID, issue.ProjectID, issue.State, issue.Title)
@@ -205,7 +206,9 @@ func (git *Git) ListGitIssues(all bool) error {
 	return nil
 }
 
-func (git *Git) GetDetailedProjectIssue(projectID int, issueID int) error {
+func (git *Git) DetailedProjectIssue(projectID int, issueID int) error {
+	git.InitClient()
+
 	fmt.Printf("Fetching GitLab issue %d@%d...\n", issueID, projectID)
 	opt := new(gitlab.ListProjectIssuesOptions)
 	opt.IIDs = []int{issueID}
@@ -229,37 +232,34 @@ func (git *Git) GetDetailedProjectIssue(projectID int, issueID int) error {
 		fmt.Printf("Request ended with %d %s", resp.StatusCode, resp.Status)
 		return errors.New("bad response")
 	}
-	output, err := ioutil.TempFile("", "jigit")
-	if err != nil {
-		//output = os.Stdout
-	}
-	defer os.Remove(output.Name())
+	sort.Sort(GitCommentsTimeSort(notes))
 
-	less := exec.Command("less", output.Name())
-	less.Stdout = os.Stdout
-	less.Stderr = os.Stderr
+	out, err := less.NewFile()
+	if err != nil {
+		// fixme shitty error handling
+		//out.File = os.Stdout
+	}
 
 	// todo show project name
 	// todo link jira issue
 
-	fmt.Fprintf(output, " Issue #%d: %s (%s)\n\n Project:\t%d\n\n Jira task:\t%d\n"+
-		" Assignee:\t%s\n Created at:\t%s\n Link:\t\t%s\n\n Tags: %s\n\n %s\n%s\n\n",
-		issue.IID, issue.Title, strings.ToUpper(issue.State), issue.ProjectID,
-		777, issue.Assignee.Name, issue.CreatedAt.Format(time.RFC850),
-		issue.WebURL, issue.Labels,
-		stringToFixedWidth(issue.Description, textWidthSize), sepIssue)
+	fmt.Fprintf(out, " Issue #%d: %s (%s) tags: %s\n\n Project:\t%d\n Jira task:\t%d\n"+
+		" Assignee:\t%s\n Created at:\t%s (%s)\n Link:\t\t%s\n\n %s%s\n",
+		issue.IID, issue.Title, strings.ToUpper(issue.State), issue.Labels,
+		issue.ProjectID, 777, issue.Assignee.Name, issue.CreatedAt.Format(time.RFC850),
+		RelativeTime(*issue.CreatedAt),
+		issue.WebURL, stringToFixedWidth(issue.Description, textWidthSize), sepIssue)
 	for _, note := range notes {
-		fmt.Fprintf(output, " [%d] %s%s @%s at %s\n\n %s\n%s\n",
+		fmt.Fprintf(out, " [%d] %s%s @%s wrote %s\n\n %s\n%s",
 			note.ID, printIfEdited(note.UpdatedAt.Equal(*note.CreatedAt)),
-			note.Author.Name, note.Author.Username,
-			note.CreatedAt.Format(commentTime),
+			note.Author.Name, note.Author.Username, RelativeTime(*note.CreatedAt),
 			stringToFixedWidth(note.Body, textWidthSize), sepComment)
 	}
-	if err := less.Start(); err != nil {
+	if err := out.Render(); err != nil {
 		return err
 	}
-	less.Wait()
-	output.Close()
+	out.Wait()
+	out.Close()
 
 	return nil
 }
@@ -393,4 +393,18 @@ func parseIssueID(iid []string) ([]int, error) {
 		issueID = append(issueID, id)
 	}
 	return issueID, nil
+}
+
+type GitCommentsTimeSort []*gitlab.Note
+
+func (c GitCommentsTimeSort) Less(i, j int) bool {
+	return c[i].CreatedAt.Before(*c[j].CreatedAt)
+}
+
+func (c GitCommentsTimeSort) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func (c GitCommentsTimeSort) Len() int {
+	return len(c)
 }
