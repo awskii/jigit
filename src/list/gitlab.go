@@ -1,11 +1,10 @@
 package list
 
 import (
+	"bytes"
 	"config"
-	"errors"
+	"encoding/gob"
 	"fmt"
-	"github.com/olekukonko/tablewriter"
-	"github.com/xanzy/go-gitlab"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -14,16 +13,16 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
+	"github.com/xanzy/go-gitlab"
 )
 
 func proceedGit(fl Subcmd) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
-	}
-	ep := cfg.GitLab.Address
-	if ep == "" {
-		return ErrBadAddress
 	}
 
 	storage, err := persistent.NewStorage(cfg.Persistent.Path)
@@ -32,96 +31,115 @@ func proceedGit(fl Subcmd) error {
 	}
 	defer storage.Close()
 
-	//key := askPassphrase()
-	key := []byte("key")
-	login, pass, err := fetchGitCredsFromStorage(storage, key)
-	if err != nil {
-		// Todo sanitize error
-		fmt.Println(err)
-		// unauthorized
-		login, pass = askCredentials(ep)
-		//encLogin, _ := persistent.Encrypt(key, login)
-		err := storage.Set(persistent.BucketAuth, persistent.KeyGitlabUser, []byte(login))
-		if err != nil {
-			return err
-		}
-		//encPass, _ := persistent.Encrypt(key, pass)
-		err = storage.Set(persistent.BucketAuth, persistent.KeyGitlabPass, []byte(pass))
-		if err != nil {
-			return err
-		}
-	}
-
-	fmt.Printf("Connecting to '%s'...\n", ep)
-	git, err := gitlab.NewBasicAuthClient(nil, ep, login, pass)
-	if err != nil {
-		return err
-	}
+	git := &Git{cfg: cfg, storage: storage}
 
 	switch {
 	default:
-		projectID, issueID, err := parseProjectAndIssueID(fl.ProjectID, fl.IssueID)
+		if fl.ProjectID == "" {
+			fmt.Printf("You should provide project ID via -p or --project flag")
+		}
+		projectID, err := strconv.Atoi(fl.ProjectID)
+		if err != nil {
+			fmt.Printf("Bad project ID: %s", err)
+			return err
+		}
+
+		return git.ListProjectIssues(projectID, fl.All)
+	case len(fl.IssueID) != 0:
+		projectID, err := strconv.Atoi(fl.ProjectID)
+		if err != nil {
+			fmt.Printf("Bad project ID: %s", err)
+			return err
+		}
+		issueID, err := parseIssueID(fl.IssueID)
 		if err != nil {
 			return err
 		}
 
-		return listGitProjectIssues(git, projectID, issueID, fl.All)
-	case fl.Show:
-		projectID, issueID, err := parseProjectAndIssueID(fl.ProjectID, fl.IssueID)
-		if err != nil {
-			return err
-		}
-
-		return getGitFullProjectIssue(git, projectID, issueID[0])
+		return git.GetDetailedProjectIssue(projectID, issueID[0])
 	case fl.Assigned:
-		return listGitIssues(git, fl.All)
+		return git.ListGitIssues(fl.All)
 	case fl.Projects:
-		return listGitProjects(git, fl.Limit)
+		return git.ListProjects(fl.Limit, fl.NoCache)
 	}
 	return nil
 }
 
-func fetchGitCredsFromStorage(s *persistent.Storage, key []byte) (string, string, error) {
-	loginEnc, err := s.Get(persistent.BucketAuth, persistent.KeyGitlabUser)
-	if err != nil {
-		return "", "", err
-	}
-
-	passEnc, err := s.Get(persistent.BucketAuth, persistent.KeyGitlabPass)
-	if err != nil {
-		return "", "", err
-	}
-	//login, err := persistent.Decrypt(key, loginEnc)
-	//if err != nil {
-	//	return "", "", err
-	//}
-	//pass, err := persistent.Decrypt(key, passEnc)
-	//if err != nil {
-	//	return "", "", err
-	//}
-	//return string(login), string(pass), nil
-	return string(loginEnc), string(passEnc), nil
+type Git struct {
+	endpoint string
+	cfg      *config.Config
+	storage  *persistent.Storage
+	client   *gitlab.Client
 }
 
-func listGitProjects(git *gitlab.Client, limit int) error {
-	fmt.Printf("Fetching GitLab projects...\n")
+// Lazy gitlab client initialization
+func (git *Git) InitClient() error {
+	git.endpoint = git.cfg.GitLab.Address
+	if git.endpoint == "" {
+		return ErrBadAddress
+	}
 
-	opt := new(gitlab.ListProjectsOptions)
-	//opt.Owned = gitlab.Bool(true)
-	opt.Membership = gitlab.Bool(true)
-	opt.OrderBy = gitlab.String("last_activity_at")
-	// todo make configurable
-	opt.PerPage = limit
+	//key := askPassphrase()
+	key := []byte("key")
+	login, pass, err := git.credentials(key)
+	if err != nil {
+		// unauthorized
+		login, pass = askCredentials(git.endpoint)
+		//encLogin, _ := persistent.Encrypt(key, login)
+		err := git.storage.Set(persistent.BucketAuth, persistent.KeyGitlabUser, []byte(login))
+		if err != nil {
+			return err
+		}
+		//encPass, _ := persistent.Encrypt(key, pass)
+		err = git.storage.Set(persistent.BucketAuth, persistent.KeyGitlabPass, []byte(pass))
+		if err != nil {
+			return err
+		}
+	}
 
-	projects, resp, err := git.Projects.ListProjects(opt)
+	fmt.Printf("Connecting to '%s'...\n", git.endpoint)
+	git.client, err = gitlab.NewBasicAuthClient(nil, git.endpoint, login, pass)
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("Request ended with %d %s", resp.StatusCode, resp.Status)
-		return errors.New("bad response")
+	return nil
+}
+
+func (git *Git) ListProjects(limit int, noCache bool) error {
+	fmt.Printf("Fetching GitLab projects...\n")
+
+	projects, err := git.loadProjects()
+	if err != nil {
+		fmt.Println("cache error:", err)
 	}
-	fmt.Printf("Fetched %d projects.\n\n", len(projects))
+	if noCache || projects == nil || len(projects) == 0 {
+		if err = git.InitClient(); err != nil {
+			return err
+		}
+		var (
+			resp *gitlab.Response
+			err  error
+		)
+		opt := new(gitlab.ListProjectsOptions)
+		//opt.Owned = gitlab.Bool(true)
+		opt.Membership = gitlab.Bool(true)
+		opt.OrderBy = gitlab.String("last_activity_at")
+		opt.PerPage = limit // todo make configurable
+
+		projects, resp, err = git.client.Projects.ListProjects(opt)
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf("Request ended with %d %s", resp.StatusCode, resp.Status)
+			return errors.New("bad response")
+		}
+		err = git.storeProjects(projects)
+		if err != nil {
+			fmt.Println("DEBUG: storing error:", err)
+		}
+		fmt.Printf("Fetched %d projects.\n\n", len(projects))
+	}
 
 	out := tablewriter.NewWriter(os.Stdout)
 	out.SetHeader([]string{"ID", "Name", "Description", "Link"})
@@ -137,17 +155,16 @@ func listGitProjects(git *gitlab.Client, limit int) error {
 	return nil
 }
 
-func listGitProjectIssues(git *gitlab.Client, projectID int, issueID []int, all bool) error {
+func (git *Git) ListProjectIssues(projectID int, all bool) error {
+	git.InitClient()
+
 	fmt.Printf("Fetching GitLab issues by project %d...\n", projectID)
 	opt := new(gitlab.ListProjectIssuesOptions)
-	if len(issueID) != 0 {
-		opt.IIDs = issueID
-	}
 	if !all {
 		opt.State = gitlab.String("opened")
 	}
 
-	issues, resp, err := git.Issues.ListProjectIssues(projectID, opt)
+	issues, resp, err := git.client.Issues.ListProjectIssues(projectID, opt)
 	if err != nil {
 		return err
 	}
@@ -164,13 +181,14 @@ func listGitProjectIssues(git *gitlab.Client, projectID int, issueID []int, all 
 	return nil
 }
 
-func listGitIssues(git *gitlab.Client, all bool) error {
+func (git *Git) ListGitIssues(all bool) error {
+	git.InitClient()
 	fmt.Printf("Fetching GitLab issues...\n")
 	opt := new(gitlab.ListIssuesOptions)
 	if !all {
 		opt.State = gitlab.String("opened")
 	}
-	issues, resp, err := git.Issues.ListIssues(opt)
+	issues, resp, err := git.client.Issues.ListIssues(opt)
 	if err != nil {
 		return err
 	}
@@ -180,20 +198,20 @@ func listGitIssues(git *gitlab.Client, all bool) error {
 	}
 	fmt.Printf("Fetched %d issues.\n\n", len(issues))
 	for _, issue := range issues {
-		fmt.Printf(" %5d [%d] (%s) | %s\n",
+		fmt.Printf(" #%5d at [%d] (%s) - %s\n",
 			issue.IID, issue.ProjectID, issue.State, issue.Title)
 	}
 
 	return nil
 }
 
-func getGitFullProjectIssue(git *gitlab.Client, projectID int, issueID int) error {
+func (git *Git) GetDetailedProjectIssue(projectID int, issueID int) error {
 	fmt.Printf("Fetching GitLab issue %d@%d...\n", issueID, projectID)
 	opt := new(gitlab.ListProjectIssuesOptions)
 	opt.IIDs = []int{issueID}
 
 	//todo use git.Issues.GetIssue()
-	issues, resp, err := git.Issues.ListProjectIssues(projectID, opt)
+	issues, resp, err := git.client.Issues.ListProjectIssues(projectID, opt)
 	if err != nil {
 		return err
 	}
@@ -203,7 +221,7 @@ func getGitFullProjectIssue(git *gitlab.Client, projectID int, issueID int) erro
 	}
 	issue := issues[0]
 
-	notes, resp, err := git.Notes.ListIssueNotes(projectID, issueID, nil)
+	notes, resp, err := git.client.Notes.ListIssueNotes(projectID, issueID, nil)
 	if err != nil {
 		return err
 	}
@@ -246,6 +264,103 @@ func getGitFullProjectIssue(git *gitlab.Client, projectID int, issueID int) erro
 	return nil
 }
 
+func (git *Git) credentials(key []byte) (string, string, error) {
+	loginEnc, err := git.storage.Get(persistent.BucketAuth, persistent.KeyGitlabUser)
+	if err != nil {
+		return "", "", err
+	}
+
+	passEnc, err := git.storage.Get(persistent.BucketAuth, persistent.KeyGitlabPass)
+	if err != nil {
+		return "", "", err
+	}
+	//login, err := persistent.Decrypt(key, loginEnc)
+	//if err != nil {
+	//	return "", "", err
+	//}
+	//pass, err := persistent.Decrypt(key, passEnc)
+	//if err != nil {
+	//	return "", "", err
+	//}
+	//return string(login), string(pass), nil
+	return string(loginEnc), string(passEnc), nil
+}
+
+func (git *Git) storeProjects(p []*gitlab.Project) error {
+	buf := new(bytes.Buffer)
+
+	for i := 0; i < len(p); i++ {
+		gp := NewGitProject(p[i])
+		err := gob.NewEncoder(buf).Encode(*gp)
+		if err != nil {
+			return errors.Wrapf(err, "can't encode '%s' project", gp.Name)
+		}
+		err = git.storage.Set(persistent.BucketGitProjectCache, []byte(gp.Name), buf.Bytes())
+		if err != nil {
+			return errors.Wrapf(err, "can't store '%s' project", gp.Name)
+		}
+		buf.Reset()
+	}
+	return nil
+}
+
+func (git *Git) loadProjects() ([]*gitlab.Project, error) {
+	p := make([]*gitlab.Project, 0, 8)
+	fn := func(k, v []byte) error {
+		fmt.Printf("decoding %s\n", string(k))
+		gp := new(GitProject)
+		buf := bytes.NewBuffer(v)
+		if err := gob.NewDecoder(buf).Decode(gp); err != nil {
+			return err
+		}
+		p = append(p, gp.Extend())
+		return nil
+	}
+	err := git.storage.ForEach(persistent.BucketGitProjectCache, fn)
+	if err != nil {
+		return nil, err
+	}
+	if len(p) != 0 {
+		fmt.Printf("Loaded %d projects from cache.\n\n", len(p))
+	}
+	return p, nil
+}
+
+// lightweight structure to store only valuable data
+type GitProject struct {
+	Name        string
+	Link        string
+	Description string
+	ID          int
+}
+
+func NewGitProject(p *gitlab.Project) *GitProject {
+	return &GitProject{
+		Name:        p.Name,
+		Link:        p.WebURL,
+		Description: p.Description,
+		ID:          p.ID,
+	}
+}
+
+// unmarshal to existing object without malloc
+func (p *GitProject) Unmarshal(v *gitlab.Project) {
+	v.Name = p.Name
+	v.WebURL = p.Link
+	v.Description = p.Description
+	v.ID = p.ID
+}
+
+// alloc new *Project and put data into it
+func (p *GitProject) Extend() *gitlab.Project {
+	return &gitlab.Project{
+		Name:        p.Name,
+		WebURL:      p.Link,
+		Description: p.Description,
+		ID:          p.ID,
+	}
+}
+
 // gitlab helpers
 func printIfEdited(cond bool) string {
 	if cond {
@@ -254,19 +369,14 @@ func printIfEdited(cond bool) string {
 	return "edited "
 }
 
-func parseProjectAndIssueID(pid string, iid []string) (int, []int, error) {
+func parseIssueID(iid []string) ([]int, error) {
 	// projectID should be string because JIRA id contains characters
 	// we need to cast ProjectID and IssueID to int's
-	projectID, err := strconv.Atoi(pid)
-	if err != nil {
-		fmt.Printf("Bad project ID: %s", err)
-		return 0, nil, ErrBadArg
-	}
 	issueID := make([]int, 0)
 	switch len(iid) {
 	case 0:
 		fmt.Println("You should provide at least one issue ID to fetch with -i or --issue flag.")
-		return 0, nil, ErrBadArg
+		return nil, ErrBadArg
 	case 1:
 		// if it some id's but coma-separated?
 		sp := strings.Split(iid[0], ",")
@@ -278,9 +388,9 @@ func parseProjectAndIssueID(pid string, iid []string) (int, []int, error) {
 		id, err := strconv.Atoi(strings.TrimSpace(iid[0]))
 		if err != nil {
 			fmt.Printf("Bad issue ID: %s", err)
-			return 0, nil, ErrBadArg
+			return nil, ErrBadArg
 		}
 		issueID = append(issueID, id)
 	}
-	return projectID, issueID, nil
+	return issueID, nil
 }
