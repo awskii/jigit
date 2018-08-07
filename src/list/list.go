@@ -28,10 +28,10 @@ var (
 )
 
 type Subcmd struct {
-	JiraMode  bool     `long:"jira" short:"j"`
-	Projects  bool     `short:"p"`
-	ProjectID string   `short:"P" long:"project"`
-	IssueID   []string `short:"i" long:"issue" description:"issue ID(s) for detailed view"`
+	JiraMode  bool     `short:"j" long:"jira" description:"if provided, listings will be fetched from Jira instead of GitLab"`
+	Projects  bool     `short:"p" description:"list projects instead of issues"`
+	ProjectID string   `short:"P" long:"project" description:"project ID to get issues on"`
+	IssueID   []string `short:"i" long:"issue" description:"issue ID for detailed view"`
 	//IssueCommentSortRule
 
 	Assigned bool `short:"t"`
@@ -39,8 +39,9 @@ type Subcmd struct {
 	All      bool `long:"ignore-state" description:"ignore issue state"`
 	Show     bool `long:"show"` // todo deprecate
 	//ShowLinks bool   `short:"l" long:"links" description:"show web link to entity"`
-	List   bool   `short:"l" description:"show output as list instead of piping it to less utility"`
-	Search string `short:"s" long:"search"`
+	//List    bool   `short:"l" description:"show output as list instead of piping it to less utility"`
+	Search  string `short:"s" long:"search"`
+	NoCache bool   `short:"c" long:"no-cache" description:"ignore cached data and retrieve fresh data from remote"`
 
 	Active bool
 	Argv   []string
