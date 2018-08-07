@@ -80,6 +80,13 @@ func (s *Storage) Get(bucket, key []byte) ([]byte, error) {
 	return buf, err
 }
 
+func (s *Storage) ForEach(bucket []byte, f func(k, v []byte) error) error {
+	fn := func(tx *bolt.Tx) error {
+		return tx.Bucket(bucket).ForEach(f)
+	}
+	return s.b.View(fn)
+}
+
 func (s *Storage) Close() error {
 	return s.b.Close()
 }
