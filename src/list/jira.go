@@ -37,7 +37,7 @@ func proceedJira(fl Subcmd) error {
 	//key := askPassphrase()
 	key := []byte("key")
 	// todo fix cred issuer
-	login, pass, err := fetchGitCredsFromStorage(storage, key)
+	login, pass, err := fetchJiraCredentials(storage, key)
 	if err != nil {
 		// Todo sanitize error
 		fmt.Println(err)
@@ -75,7 +75,6 @@ func proceedJira(fl Subcmd) error {
 		}
 		return getJiraIssue(jrcli, fl.IssueID[0])
 	case fl.Assigned:
-		//return listGitIssues(git, fl.All)
 		return listJiraProjectIssues(jrcli, fl.ProjectID)
 	case fl.Projects:
 		return listJiraProjects(jrcli)
@@ -85,12 +84,14 @@ func proceedJira(fl Subcmd) error {
 }
 
 func fetchJiraCredentials(s *persistent.Storage, key []byte) (string, string, error) {
-	loginEnc, err := s.Get(persistent.BucketAuth, persistent.KeyJiraUser)
+	// TODO fix keys
+	loginEnc, err := s.Get(persistent.BucketAuth, persistent.KeyGitlabUser)
 	if err != nil {
 		return "", "", err
 	}
 
-	passEnc, err := s.Get(persistent.BucketAuth, persistent.KeyJiraPass)
+	// TODO fix keys
+	passEnc, err := s.Get(persistent.BucketAuth, persistent.KeyGitlabPass)
 	if err != nil {
 		return "", "", err
 	}
