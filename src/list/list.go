@@ -28,13 +28,14 @@ var (
 )
 
 type Subcmd struct {
-	JiraMode  bool     `short:"j" long:"jira" description:"if provided, listings will be fetched from Jira instead of GitLab"`
-	Projects  bool     `short:"p" description:"list projects instead of issues"`
-	ProjectID string   `short:"P" long:"project" description:"project ID to get issues on"`
-	IssueID   []string `short:"i" long:"issue" description:"issue ID for detailed view"`
+	JiraMode    bool     `short:"j" long:"jira" description:"if provided, listings will be fetched from Jira instead of GitLab"`
+	Projects    bool     `short:"P" description:"list projects instead of issues"`
+	ProjectName string   `short:"p" long:"project" description:"project name to get issues on"`
+	ProjectID   string   `long:"pid" description:"project ID to get issues on"`
+	IssueID     []string `short:"i" long:"issue" description:"issue ID for detailed view"`
 	//IssueCommentSortRule
 
-	Assigned bool `short:"t"`
+	Assigned bool `short:"a" long:"assigned" description:"show all issues assigned to me"`
 	Limit    int  `short:"n" default:"20" description:"limit for entities to show"`
 	All      bool `long:"ignore-state" description:"ignore issue state"`
 	Show     bool `long:"show"` // todo deprecate
