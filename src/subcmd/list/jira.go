@@ -2,18 +2,20 @@ package list
 
 import (
 	"bytes"
-	"config"
 	"errors"
 	"fmt"
-	"github.com/andygrunwald/go-jira"
-	"github.com/olekukonko/tablewriter"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
-	"persistent"
 	"strings"
 	"time"
+
+	"lib/persistent"
+	"subcmd/config"
+
+	"github.com/andygrunwald/go-jira"
+	"github.com/olekukonko/tablewriter"
 )
 
 const jiraTime = "2006-01-02T15:04:05.999-0700"

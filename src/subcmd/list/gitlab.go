@@ -2,18 +2,18 @@ package list
 
 import (
 	"bytes"
-	"config"
 	"encoding/gob"
 	"fmt"
 	"net/http"
 	"os"
-	"persistent"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"less"
+	"lib/less"
+	"lib/persistent"
+	"subcmd/config"
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"

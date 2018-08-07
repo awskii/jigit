@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"list"
-
-	"config"
-	"github.com/jessevdk/go-flags"
 	"os"
+
+	"subcmd/config"
+	"subcmd/list"
+
+	"github.com/jessevdk/go-flags"
 )
 
 func main() {
