@@ -87,6 +87,18 @@ func (s *Storage) ForEach(bucket []byte, f func(k, v []byte) error) error {
 	return s.b.View(fn)
 }
 
+func (s *Storage) Invalidate(bucket []byte) error {
+	fn := func(tx *bolt.Tx) error {
+		err := tx.DeleteBucket(bucket)
+		if err != nil {
+			return err
+		}
+		_, err = tx.CreateBucket(bucket)
+		return err
+	}
+	return s.b.Update(fn)
+}
+
 func (s *Storage) Close() error {
 	return s.b.Close()
 }

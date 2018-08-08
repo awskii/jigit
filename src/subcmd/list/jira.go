@@ -77,7 +77,7 @@ func proceedJira(fl Subcmd) error {
 		}
 		return getJiraIssue(jrcli, fl.IssueID[0])
 	case fl.Assigned:
-		return listJiraProjectIssues(jrcli, fl.ProjectID)
+		return listJiraProjectIssues(jrcli, fl.ProjectName)
 	case fl.Projects:
 		return listJiraProjects(jrcli)
 	}

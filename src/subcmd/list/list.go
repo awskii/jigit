@@ -31,7 +31,7 @@ type Subcmd struct {
 	JiraMode    bool     `short:"j" long:"jira" description:"if provided, listings will be fetched from Jira instead of GitLab"`
 	Projects    bool     `short:"P" description:"list projects instead of issues"`
 	ProjectName string   `short:"p" long:"project" description:"project name to get issues on"`
-	ProjectID   string   `long:"pid" description:"project ID to get issues on"`
+	ProjectID   int      `long:"pid" description:"project ID to get issues on"`
 	IssueID     []string `short:"i" long:"issue" description:"issue ID for detailed view"`
 	//IssueCommentSortRule
 
