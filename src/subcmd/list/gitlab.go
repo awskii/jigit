@@ -186,16 +186,23 @@ func (git *Git) ListProjectIssues(pid int, all bool) error {
 	fmt.Printf("Fetched %d %s for project %q.\n\n", len(issues),
 		PluralWord(len(issues), "issue", ""), name)
 
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetAutoWrapText(false)
+	table.SetBorder(false)
 	for _, issue := range issues {
-		fmt.Printf(" %5d (%s) | %s\n", issue.IID, strings.ToUpper(issue.State), issue.Title)
+		iid := fmt.Sprintf("%d", issue.IID)
+		table.Append([]string{iid, strings.ToUpper(issue.State), issue.Title})
 	}
+	table.Render()
+	fmt.Printf("\n")
 
 	return nil
 }
 
 func (git *Git) ListAssignedIssues(all bool) error {
 	git.InitClient()
-	fmt.Printf("Fetching GitLab issues...\n")
+
+	fmt.Printf("Fetching assigned to you GitLab issues\n")
 	opt := new(gitlab.ListIssuesOptions)
 	if !all {
 		opt.State = gitlab.String("opened")
@@ -210,10 +217,20 @@ func (git *Git) ListAssignedIssues(all bool) error {
 	}
 	fmt.Printf("Fetched %d %s.\n\n", len(issues),
 		PluralWord(len(issues), "issue", "issues"))
+
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetAutoWrapText(false)
+	table.SetBorder(false)
+	table.SetColumnSeparator(" ")
+
 	for _, issue := range issues {
-		fmt.Printf(" #%5d at [%d] (%s) - %s\n",
-			issue.IID, issue.ProjectID, issue.State, issue.Title)
+		pname, _ := git.projectNameByID(issue.ProjectID)
+		iid := fmt.Sprintf("%d", issue.IID)
+
+		table.Append([]string{pname, iid, strings.ToUpper(issue.State), issue.Title})
 	}
+	table.Render()
+	fmt.Printf("\n")
 
 	return nil
 }
@@ -361,12 +378,21 @@ func (git *Git) storeProjects(projects []*gitlab.Project) error {
 }
 
 func (git *Git) projectNameByID(pid int) (string, error) {
-	name, err := git.storage.Get(persistent.BucketGitProjectCache,
-		[]byte(strconv.Itoa(pid)))
+	name, err := git.storage.Get(persistent.BucketGitProjectCache, []byte(strconv.Itoa(pid)))
+	if err == nil { // found
+		return string(name), nil
+	}
+	// not found, check remote
+	git.InitClient()
+	p, resp, err := git.client.Projects.GetProject(pid, nil)
 	if err != nil {
 		return "", err
 	}
-	return string(name), nil
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.Errorf(resp.Status)
+	}
+	git.storeProjects([]*gitlab.Project{p})
+	return p.Name, nil
 }
 
 func (git *Git) projectByName(name string, noCache, alike bool) (*gitlab.Project, error) {
