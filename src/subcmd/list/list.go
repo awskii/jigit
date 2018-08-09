@@ -29,20 +29,14 @@ var (
 
 type Subcmd struct {
 	JiraMode    bool     `short:"j" long:"jira" description:"if provided, listings will be fetched from Jira instead of GitLab"`
+	Assigned    bool     `short:"a" long:"assigned" description:"show all issues assigned to me"`
 	Projects    bool     `short:"P" description:"list projects instead of issues"`
 	ProjectName string   `short:"p" long:"project" description:"project name to get issues on"`
 	ProjectID   int      `long:"pid" description:"project ID to get issues on"`
 	IssueID     []string `short:"i" long:"issue" description:"issue ID for detailed view"`
-	//IssueCommentSortRule
-
-	Assigned bool `short:"a" long:"assigned" description:"show all issues assigned to me"`
-	Limit    int  `short:"n" default:"20" description:"limit for entities to show"`
-	All      bool `long:"ignore-state" description:"ignore issue state"`
-	Show     bool `long:"show"` // todo deprecate
-	//ShowLinks bool   `short:"l" long:"links" description:"show web link to entity"`
-	//List    bool   `short:"l" description:"show output as list instead of piping it to less utility"`
-	Search  string `short:"s" long:"search"`
-	NoCache bool   `short:"c" long:"no-cache" description:"ignore cached data and retrieve fresh data from remote"`
+	Limit       int      `short:"n" default:"20" description:"limit for entities to show"`
+	All         bool     `short:"S" long:"ignore-state" description:"ignore issue status"`
+	NoCache     bool     `short:"c" long:"no-cache" description:"invalidate cache and retrieve fresh data from remote"`
 
 	Active bool
 	Argv   []string
@@ -105,9 +99,9 @@ func stringToFixedWidth(str string, width int) string {
 
 	buf := new(bytes.Buffer)
 	for s.Scan() {
+		buf.WriteString(" ")
 		line := s.Text()
-		if utf8.RuneCountInString(line) < width {
-			buf.WriteString(" ")
+		if utf8.RuneCountInString(line)-1 < width { // take inserted space into account
 			buf.WriteString(line)
 			buf.WriteString("\n")
 			continue
