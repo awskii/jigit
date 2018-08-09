@@ -1,6 +1,9 @@
 package list
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // These are included because they are common technical terms.
 var (
@@ -17,6 +20,10 @@ var (
 		'a': true, 'e': true, 'i': true, 'o': true, 'u': true,
 	}
 )
+
+func Plural(quantity int, singular, plural string) string {
+	return fmt.Sprintf("%d %s", quantity, PluralWord(quantity, singular, plural))
+}
 
 // PluralWord builds the plural form of an English word.
 // The simple English rules of regular pluralization will be used
