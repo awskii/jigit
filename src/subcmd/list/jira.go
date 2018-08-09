@@ -33,10 +33,12 @@ func proceedJira(fl Subcmd) error {
 	defer storage.Close()
 
 	jr := &Jira{cfg: cfg, storage: storage}
+	if fl.NoCache {
+		jr.storage.Invalidate(persistent.BucketJiraIssueCache)
+	}
 
 	fl.ProjectName = strings.ToUpper(fl.ProjectName)
 
-	jr.InitClient()
 	switch {
 	default:
 		//listGitProjectIssues(git, fl.ProjectID, fl.IssueID, fl.All)
@@ -102,15 +104,44 @@ func (j *Jira) InitClient() error {
 }
 
 func (j *Jira) Issue(issueID string) error {
-	issue, resp, err := j.client.Issue.Get(issueID, nil)
+	var issue *jira.Issue
+
+	issueRaw, err := j.storage.Get(persistent.BucketJiraIssueCache, []byte(issueID))
 	if err != nil {
-		return err
+		var (
+			resp *jira.Response
+			err  error
+		)
+		j.InitClient()
+		issue, resp, err = j.client.Issue.Get(issueID, nil)
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return errors.New("bad status returned")
+		}
+		is := StripJiraIssue(issue)
+		buf := new(bytes.Buffer)
+
+		if err = is.Encode(buf); err != nil {
+			debug("issue encode failed: %s", err)
+		} else {
+			err = j.storage.Set(persistent.BucketJiraIssueCache, []byte(issue.Key), buf.Bytes())
+			if err != nil {
+				debug("issue store failed: %s", err)
+			}
+		}
+	} else {
+		is := new(JiraIssue)
+		if err = is.Decode(issueRaw); err != nil {
+			debug("issue decode failed: %s", err)
+		}
+
+		issue = is.Extend()
+		if issue == nil {
+			debug("issue is nil :(")
+		}
 	}
-	if resp.StatusCode != http.StatusOK {
-		return errors.New("bad status returned")
-	}
-	jiraAddr := j.client.GetBaseURL()
-	f := issue.Fields
 
 	out, err := less.NewFile()
 	if err != nil {
@@ -118,6 +149,7 @@ func (j *Jira) Issue(issueID string) error {
 	}
 	defer out.Close()
 
+	f := issue.Fields
 	fmt.Fprintf(out, "\n %s [%s] %s\n\n", issue.Key, f.Status.Name, f.Summary)
 
 	fmt.Fprintf(out, " Created:\t%s (%s)\n",
@@ -126,7 +158,7 @@ func (j *Jira) Issue(issueID string) error {
 	fmt.Fprintf(out, " Author:\t%s (@%s)\n", f.Creator.DisplayName, f.Creator.Name)
 	fmt.Fprintf(out, " Parent:\t%s\n", printIfNotNil(f.Parent))
 	fmt.Fprintf(out, " Priority:\t%s\n", f.Priority.Name)
-	fmt.Fprintf(out, " Link:\t\t%sbrowse/%s\n\n", (&jiraAddr).String(), issue.Key)
+	fmt.Fprintf(out, " Link:\t\t%sbrowse/%s\n\n", j.cfg.Jira.Address, issue.Key)
 
 	fmt.Fprintf(out, "%s", stringToFixedWidth(f.Description, textWidthSize))
 	fmt.Fprintf(out, sepIssue)
@@ -262,10 +294,45 @@ func stripIssueLinks(l []*jira.IssueLink) []JiraIssueLink {
 	for i := 0; i < len(l); i++ {
 		il[i].Type.Inward = l[i].Type.Inward
 		il[i].Type.Outward = l[i].Type.Outward
-		il[i].InwardIssue = *StripJiraIssue(l[i].InwardIssue)
-		il[i].OutwardIssue = *StripJiraIssue(l[i].OutwardIssue)
+		if in := StripJiraIssue(l[i].InwardIssue); in != nil {
+			il[i].InwardIssue = *in
+		}
+		if out := StripJiraIssue(l[i].OutwardIssue); out != nil {
+			il[i].OutwardIssue = *out
+		}
 	}
 	return il
+}
+
+func dressIssueLink(il []JiraIssueLink) []*jira.IssueLink {
+	links := make([]*jira.IssueLink, len(il))
+	for j := 0; j < len(il); j++ {
+		switch {
+		case il[j].InwardIssue.Key != "":
+			links[j] = &jira.IssueLink{
+				Type: jira.IssueLinkType{Inward: il[j].Type.Inward},
+				InwardIssue: &jira.Issue{
+					Key: il[j].InwardIssue.Key,
+					Fields: &jira.IssueFields{
+						Status:  &jira.Status{Name: il[j].InwardIssue.StatusName},
+						Summary: il[j].InwardIssue.Summary,
+					},
+				},
+			}
+		case il[j].OutwardIssue.Key != "":
+			links[j] = &jira.IssueLink{
+				Type: jira.IssueLinkType{Outward: il[j].Type.Outward},
+				OutwardIssue: &jira.Issue{
+					Key: il[j].OutwardIssue.Key,
+					Fields: &jira.IssueFields{
+						Status:  &jira.Status{Name: il[j].OutwardIssue.StatusName},
+						Summary: il[j].OutwardIssue.Summary,
+					},
+				},
+			}
+		}
+	}
+	return links
 }
 
 type JiraUser struct {
@@ -274,6 +341,9 @@ type JiraUser struct {
 }
 
 func stripUser(u *jira.User) JiraUser {
+	if u == nil {
+		return JiraUser{}
+	}
 	return JiraUser{
 		DisplayName: u.DisplayName,
 		Name:        u.Name,
@@ -301,7 +371,22 @@ func stripSubtasks(s []*jira.Subtasks) []JiraIssue {
 	return is
 }
 
+func dressSubtasks(is []JiraIssue) []*jira.Subtasks {
+	sub := make([]*jira.Subtasks, len(is))
+	for j := 0; j < len(is); j++ {
+		sub[j] = &jira.Subtasks{
+			Key: is[j].Key,
+			Fields: jira.IssueFields{
+				Status:  &jira.Status{Name: is[j].StatusName},
+				Summary: is[j].Summary,
+			},
+		}
+	}
+	return sub
+}
+
 type JiraComment struct {
+	ID      string
 	Author  JiraUser
 	Body    string
 	Created string
@@ -314,11 +399,29 @@ func stripComments(c []*jira.Comment) []JiraComment {
 
 	jc := make([]JiraComment, len(c))
 	for i := 0; i < len(c); i++ {
+		jc[i].ID = c[i].ID
 		jc[i].Created = c[i].Created
 		jc[i].Body = c[i].Body
 		jc[i].Author = stripUser(&c[i].Author)
 	}
 	return jc
+}
+
+func dressComments(ic []JiraComment) *jira.Comments {
+	comments := new(jira.Comments)
+	comments.Comments = make([]*jira.Comment, len(ic))
+	for j := 0; j < len(ic); j++ {
+		comments.Comments[j] = &jira.Comment{
+			ID:      ic[j].ID,
+			Body:    ic[j].Body,
+			Created: ic[j].Created,
+			Author: jira.User{
+				Name:        ic[j].Author.Name,
+				DisplayName: ic[j].Author.DisplayName,
+			},
+		}
+	}
+	return comments
 }
 
 func StripJiraIssue(i *jira.Issue) (ji *JiraIssue) {
@@ -352,48 +455,35 @@ func StripJiraIssue(i *jira.Issue) (ji *JiraIssue) {
 }
 
 func (i *JiraIssue) Extend() *jira.Issue {
-	ji := new(jira.Issue)
-
-	ji.Key = i.Key
-	ji.Fields.Assignee.Name = i.Assignee.Name
-	ji.Fields.Assignee.DisplayName = i.Assignee.DisplayName
-	ji.Fields.Creator.Name = i.Creator.Name
-	ji.Fields.Creator.DisplayName = i.Creator.DisplayName
-	ji.Fields.Created = jira.Time(i.Created)
-	ji.Fields.Summary = i.Summary
-	ji.Fields.Description = i.Description
-	ji.Fields.Parent.Key = i.ParentKey
-	ji.Fields.Status.Name = i.StatusName
-	ji.Fields.Priority.Name = i.PriorityName
+	ji := &jira.Issue{
+		Key: i.Key,
+		Fields: &jira.IssueFields{
+			Assignee: &jira.User{
+				Name:        i.Assignee.Name,
+				DisplayName: i.Assignee.DisplayName,
+			},
+			Description: i.Description,
+			Creator: &jira.User{
+				Name:        i.Creator.Name,
+				DisplayName: i.Creator.DisplayName,
+			},
+			Created:  jira.Time(i.Created),
+			Summary:  i.Summary,
+			Parent:   &jira.Parent{Key: i.ParentKey},
+			Status:   &jira.Status{Name: i.StatusName},
+			Priority: &jira.Priority{Name: i.PriorityName},
+		},
+	}
 
 	if len(i.Comments) != 0 {
-		ji.Fields.Comments.Comments = make([]*jira.Comment, len(i.Comments))
-		for j := 0; j < len(i.Comments); j++ {
-			ji.Fields.Comments.Comments[j].Body = i.Comments[j].Body
-			ji.Fields.Comments.Comments[j].Author.Name = i.Comments[j].Author.Name
-			ji.Fields.Comments.Comments[j].Author.DisplayName = i.Comments[j].Author.DisplayName
-			ji.Fields.Comments.Comments[j].Created = i.Comments[j].Created
-		}
+		ji.Fields.Comments = dressComments(i.Comments)
 	}
 	if len(i.Subtasks) != 0 {
-		ji.Fields.Subtasks = make([]*jira.Subtasks, len(i.Subtasks))
-		for j := 0; j < len(i.Subtasks); j++ {
-			ji.Fields.Subtasks[j].Key = i.Subtasks[j].Key
-			ji.Fields.Subtasks[j].Fields.Status.Name = i.Subtasks[j].StatusName
-			ji.Fields.Subtasks[j].Fields.Summary = i.Subtasks[j].Summary
-		}
+		ji.Fields.Subtasks = dressSubtasks(i.Subtasks)
 	}
 	if len(i.IssueLinks) != 0 {
-		ji.Fields.IssueLinks = make([]*jira.IssueLink, len(i.IssueLinks))
-		for j := 0; j < len(i.IssueLinks); j++ {
-			// ji.Fields.IssueLinks[j].InwardIssue = i.IssueLinks[j].InwardIssue
-			// ji.Fields.IssueLinks[j].OutwardIssue = i.IssueLinks[j].OutwardIssue
-			// ji.Fields.IssueLinks[j].Type.Inward = i.IssueLinks[j].Type.Inward
-			// ji.Fields.IssueLinks[j].Type.Outward = i.IssueLinks[j].Type.Outward
-		}
-
+		ji.Fields.IssueLinks = dressIssueLink(i.IssueLinks)
 	}
-
 	return ji
 }
 

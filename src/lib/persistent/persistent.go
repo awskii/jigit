@@ -13,12 +13,16 @@ type Storage struct {
 }
 
 var (
-	BucketAuth            = []byte("auth")
-	BucketGitProjectCache = []byte("git-project-cache")
-	BucketGitIssueCache   = []byte("git-issue-cache")
+	ErrBucketNotExist = errors.New("bucket does not exist")
+	ErrNoData         = errors.New("key does not exist")
 )
 
 var (
+	BucketAuth            = []byte("auth")
+	BucketGitProjectCache = []byte("git-project-cache")
+	BucketGitIssueCache   = []byte("git-issue-cache")
+	BucketJiraIssueCache  = []byte("jira-issue-cache")
+
 	KeyGitlabUser = []byte("gitlab.user")
 	KeyGitlabPass = []byte("gitlab.pass")
 	KeyJiraUser   = []byte("jira.user")
@@ -31,7 +35,7 @@ func NewStorage(filepath string) (*Storage, error) {
 		return nil, err
 	}
 
-	buckets := [][]byte{BucketAuth, BucketGitIssueCache, BucketGitProjectCache}
+	buckets := [][]byte{BucketAuth, BucketGitIssueCache, BucketGitProjectCache, BucketJiraIssueCache}
 
 	for _, key := range buckets {
 		fn := func(tx *bolt.Tx) error {
@@ -61,12 +65,14 @@ func (s *Storage) GetString(bucket, key []byte) (string, error) {
 	return string(d), err
 }
 
-var ErrNoData = errors.New("key does not exist")
-
 func (s *Storage) Get(bucket, key []byte) ([]byte, error) {
 	var buf []byte
 	fn := func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
+		if b == nil {
+			return ErrBucketNotExist
+		}
+
 		buf = b.Get(key)
 		if buf == nil {
 			return ErrNoData
