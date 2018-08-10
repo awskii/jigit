@@ -34,7 +34,6 @@ func New() (*Jira, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer storage.Close()
 
 	return &Jira{cfg: cfg, storage: storage}, nil
 }
@@ -88,7 +87,10 @@ func (j *Jira) Issue(issueID string) (*Issue, error) {
 
 	issueRaw, err := j.storage.Get(storage.BucketJiraIssueCache, []byte(issueID))
 	if err != nil {
-		j.InitClient()
+		err := j.InitClient()
+		if err != nil {
+			return nil, err
+		}
 
 		is, resp, err := j.client.Issue.Get(issueID, nil)
 		if err != nil {
@@ -126,6 +128,11 @@ func (j *Jira) InvalidateCache() {
 }
 
 func (j *Jira) ListProjects() ([]*Project, error) {
+	err := j.InitClient()
+	if err != nil {
+		return nil, err
+	}
+
 	list, resp, err := j.client.Project.GetList()
 	if err != nil {
 		return nil, err
@@ -137,6 +144,11 @@ func (j *Jira) ListProjects() ([]*Project, error) {
 }
 
 func (j *Jira) ListAssignedIssues(projectName string) ([]*Issue, error) {
+	err := j.InitClient()
+	if err != nil {
+		return nil, err
+	}
+
 	user, resp, err := j.client.User.GetSelf()
 	if err != nil {
 		return nil, err
@@ -153,6 +165,10 @@ func (j *Jira) ListAssignedIssues(projectName string) ([]*Issue, error) {
 		return nil, errors.New("bad status returned")
 	}
 	return compactIssues(issues), nil
+}
+
+func (j *Jira) Destruct() {
+	j.storage.Close()
 }
 
 func (j *Jira) credentials(key []byte) (string, string, error) {
@@ -196,9 +212,11 @@ func stripProject(p *jira.Project) *Project {
 func compactProjects(p *jira.ProjectList) []*Project {
 	res := make([]*Project, len(*p))
 	for i := 0; i < len(res); i++ {
-		res[i].Name = (*p)[i].Name
-		res[i].Key = (*p)[i].Key
-		res[i].ID = (*p)[i].ID
+		res[i] = &Project{
+			Name: (*p)[i].Name,
+			Key:  (*p)[i].Key,
+			ID:   (*p)[i].ID,
+		}
 	}
 	return res
 }

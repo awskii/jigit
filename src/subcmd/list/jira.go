@@ -21,6 +21,8 @@ func proceedJira(fl Subcmd) error {
 	if err != nil {
 		return err
 	}
+	defer jr.Destruct()
+
 	if fl.NoCache {
 		jr.InvalidateCache()
 	}
