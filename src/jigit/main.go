@@ -8,12 +8,13 @@ import (
 	"subcmd/list"
 
 	"github.com/jessevdk/go-flags"
+	"subcmd/link"
 )
 
 var cfg struct {
 	SubAdd     SubAdd        `command:"add" description:"create new issue"`
 	SubLs      list.Subcmd   `command:"ls" description:"list projects or issues at JIRA or GitLab"`
-	SubLn      SubLn         `command:"ln" description:"link GitLab issue with JIRA ticket (or vice versa)"`
+	SubLn      link.SubLn    `command:"ln" description:"link GitLab issue with JIRA ticket (or vice versa)"`
 	SubConfig  config.Subcmd `command:"config" description:"configuration stuff"`
 	SubCommit  SubCommit     `command:"commit" description:"create, update or delete comments on task"`
 	SubVersion SubVersion    `command:"version" description:"print current jigit version"`
@@ -48,16 +49,6 @@ type SubAdd struct {
 
 func (o *SubAdd) Execute(v []string) error {
 	fmt.Println("open!", v)
-	return nil
-}
-
-type SubLn struct {
-	JiraTicket string `short:"j"`
-	GitIssue   string `short:"g"`
-}
-
-func (ln *SubLn) Execute(v []string) error {
-	fmt.Println("ln!", v)
 	return nil
 }
 

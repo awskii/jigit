@@ -11,7 +11,8 @@ import (
 )
 
 type Subcmd struct {
-	Set bool `long:"set" description:"save key value pair"`
+	Set  bool `long:"set" description:"save key value pair"`
+	Show bool `long:"show" description:"show current config values"`
 
 	Active bool
 	Argv   []string
@@ -24,11 +25,11 @@ type Config struct {
 	Jira struct {
 		Address string `toml:"address"`
 	} `toml:"jira"`
-	Persistent struct {
+	Storage struct {
 		Path         string `toml:"path"`
 		DisableCache bool   `toml:"disable_cache"`
 		Encrypt      bool   `toml:"encrypt"`
-	} `toml:"persistent"`
+	} `toml:"storage"`
 }
 
 func Process(fl Subcmd) error {
@@ -38,6 +39,14 @@ func Process(fl Subcmd) error {
 	}
 
 	switch {
+	case fl.Show:
+		fmt.Println("Current config values are:")
+		fmt.Printf("\tgitlab.address: %s\n", cfg.GitLab.Address)
+		fmt.Printf("\tjira.address: %s\n", cfg.Jira.Address)
+		fmt.Println()
+		fmt.Printf("\tstorage.path: %s\n", cfg.Storage.Path)
+		fmt.Printf("\tstorage.disable_cache: %t\n", cfg.Storage.DisableCache)
+		fmt.Printf("\tstorage.encrypt: %t\n", cfg.Storage.Encrypt)
 	case fl.Set:
 		if len(fl.Argv) < 2 {
 			fmt.Printf("You should provide configuration key and value pair:\n\n" +
@@ -80,17 +89,17 @@ var (
 		"URLs configuration\n",
 		"gitlab.address - <string> address to your GitLab installation",
 		"jira.address   - <string> address to your JIRA installation",
-		"\n Cache and persistent storage configuration\n",
-		"persistent.path      - <string> path to persistent storage file",
-		"persistent.encrypt   - <bool>   defines if sensitive data (your tokens at least) should be encrypted",
-		"persistent.off_cache - <bool>   disables projects and issue caches if true",
+		"\n Cache and storage storage configuration\n",
+		"storage.path      - <string> path to storage storage file",
+		"storage.encrypt   - <bool>   defines if sensitive data (your tokens at least) should be encrypted",
+		"storage.off_cache - <bool>   disables projects and issue caches if true",
 	}
 )
 
 func initDefaultConfig() *Config {
 	c := new(Config)
-	c.Persistent.Encrypt = true
-	c.Persistent.Path = "/var/local/jigit"
+	c.Storage.Encrypt = true
+	c.Storage.Path = "/var/local/jigit/cache"
 	return c
 }
 
@@ -102,6 +111,9 @@ func Load() (*Config, error) {
 	if err != nil {
 		return initDefaultConfig(), err
 	}
+	if !path.IsAbs(c.Storage.Path) {
+		return nil, errors.New("please, specify full path to cache file")
+	}
 	return c, nil
 }
 
@@ -111,20 +123,20 @@ func (c *Config) setValue(key, value string) error {
 		c.GitLab.Address = value
 	case "jira.address":
 		c.Jira.Address = value
-	case "persistent.path":
-		c.Persistent.Path = value
-	case "persistent.use_cache":
+	case "storage.path":
+		c.Storage.Path = value
+	case "storage.use_cache":
 		b, err := strconv.ParseBool(value)
 		if err != nil {
 			return err
 		}
-		c.Persistent.DisableCache = b
-	case "persistent.encrypt":
+		c.Storage.DisableCache = b
+	case "storage.encrypt":
 		b, err := strconv.ParseBool(value)
 		if err != nil {
 			return err
 		}
-		c.Persistent.Encrypt = b
+		c.Storage.Encrypt = b
 	default:
 		return ErrUnknownKey
 	}
