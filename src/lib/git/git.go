@@ -227,8 +227,8 @@ func (git *Git) credentials(key []byte) (string, string, error) {
 // Pid validation will be made on further stages.
 func (git *Git) GetPid(name string, pid int) (int, error) {
 	if pid == 0 && name == "" {
-		fmt.Printf("You should provide project name via -p or --project flag\n\n\t\tor\n\n" +
-			"project ID via --pid flag")
+		fmt.Println("You should provide project name via -p or --project flag or " +
+			"project ID via --pid flag.")
 		return 0, ErrBadArg
 	}
 
