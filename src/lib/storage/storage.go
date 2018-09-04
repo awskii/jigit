@@ -22,6 +22,7 @@ var (
 	BucketGitProjectCache = []byte("git-project-cache")
 	BucketGitIssueCache   = []byte("git-issue-cache")
 	BucketJiraIssueCache  = []byte("jira-issue-cache")
+	BucketIssueLinks      = []byte("issue-links")
 
 	KeyGitlabUser = []byte("gitlab.user")
 	KeyGitlabPass = []byte("gitlab.pass")
@@ -35,7 +36,13 @@ func NewStorage(filepath string) (*Storage, error) {
 		return nil, err
 	}
 
-	buckets := [][]byte{BucketAuth, BucketGitIssueCache, BucketGitProjectCache, BucketJiraIssueCache}
+	buckets := [][]byte{
+		BucketAuth,
+		BucketGitIssueCache,
+		BucketGitProjectCache,
+		BucketJiraIssueCache,
+		BucketIssueLinks,
+	}
 
 	for _, key := range buckets {
 		fn := func(tx *bolt.Tx) error {
