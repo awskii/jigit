@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"encoding/binary"
 	"github.com/boltdb/bolt"
 )
 
@@ -136,4 +137,17 @@ func Decrypt(key, data []byte) ([]byte, error) {
 	dec := make([]byte, 0)
 	cipher.Decrypt(dec, data)
 	return dec, nil
+}
+
+func (s *Storage) CreateSymlink(jiraKey string, gitProjectId int) error {
+	fn := func(tx *bolt.Tx) error {
+		b := tx.Bucket(BucketIssueLinks)
+		if b == nil {
+			return errors.New("bucket did not initialized")
+		}
+		pid := make([]byte, 0)
+		binary.BigEndian.PutUint64(pid, uint64(gitProjectId))
+		return b.Put([]byte(jiraKey), pid)
+	}
+	return s.b.Update(fn)
 }
