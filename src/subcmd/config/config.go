@@ -88,12 +88,12 @@ var (
 
 	usages = []string{
 		"URLs configuration\n",
-		"gitlab.address - <string> address to your GitLab installation",
-		"jira.address   - <string> address to your JIRA installation",
+		"  gitlab.address - <string> address to your GitLab installation",
+		"  jira.address   - <string> address to your JIRA installation",
 		"\n Cache and storage storage configuration\n",
-		"storage.path      - <string> path to storage storage file",
-		"storage.encrypt   - <bool>   defines if sensitive data (your tokens at least) should be encrypted",
-		"storage.off_cache - <bool>   disables projects and issue caches if true",
+		"  storage.path      - <string> path to storage storage file",
+		"  storage.encrypt   - <bool>   defines if sensitive data (your tokens at least) should be encrypted",
+		"  storage.off_cache - <bool>   disables projects and issue caches if true",
 	}
 )
 
