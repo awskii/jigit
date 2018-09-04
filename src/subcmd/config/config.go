@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path"
 	"strconv"
 
@@ -80,7 +81,7 @@ func (s *Subcmd) Execute(argv []string) error {
 }
 
 var (
-	configName = path.Join(".", ".jigit")
+	configName = expandConfigPath()
 
 	ErrBadArgc    = errors.New("not enough arguments")
 	ErrUnknownKey = errors.New("unknown configuration key")
@@ -101,6 +102,14 @@ func initDefaultConfig() *Config {
 	c.Storage.Encrypt = true
 	c.Storage.Path = "/var/local/jigit/cache"
 	return c
+}
+
+func expandConfigPath() string {
+	u, err := user.Current()
+	if err != nil {
+		panic(err)
+	}
+	return path.Join(u.HomeDir, ".jigit")
 }
 
 // Load configuration from file or return default configuration
