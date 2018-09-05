@@ -14,7 +14,6 @@ var (
 	sepComment = " --------------------------------------\n"
 
 	ErrBadAddress = errors.New("bad address provided")
-	ErrBadArg     = errors.New("bad arguments")
 )
 
 type Subcmd struct {

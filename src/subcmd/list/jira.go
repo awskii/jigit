@@ -34,8 +34,8 @@ func proceedJira(fl Subcmd) error {
 		//listGitProjectIssues(git, fl.ProjectID, fl.IssueID, fl.All)
 		//case fl.Show:
 		if len(fl.IssueID) == 0 {
-			fmt.Printf("You should provide issue ID to fetch with -i or --issue flag.\n")
-			return ErrBadArg
+			fmt.Fprintln(os.Stderr, "You should provide issue ID to fetch with -i or --issue flag.")
+			os.Exit(1)
 		}
 		issue, err := jr.Issue(fl.IssueID[0])
 		if err != nil {

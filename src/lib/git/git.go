@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -20,7 +21,6 @@ import (
 
 var (
 	ErrBadEndpoint = errors.New("bad or empty endpoint")
-	ErrBadArg      = errors.New("bad arguments")
 )
 
 type Git struct {
@@ -227,9 +227,8 @@ func (git *Git) credentials(key []byte) (string, string, error) {
 // Pid validation will be made on further stages.
 func (git *Git) GetPid(name string, pid int) (int, error) {
 	if pid == 0 && name == "" {
-		fmt.Println("You should provide project name via -p or --project flag or " +
-			"project ID via --pid flag.")
-		return 0, ErrBadArg
+		fmt.Fprintln(os.Stderr, "You should provide project name via -p or --project flag or project ID via --pid flag.")
+		os.Exit(1)
 	}
 
 	if name != "" {

@@ -150,8 +150,8 @@ func parseIssueID(iid []string) ([]int, error) {
 	issueID := make([]int, 0)
 	switch len(iid) {
 	case 0:
-		fmt.Println("You should provide at least one issue ID to fetch with -i or --issue flag.")
-		return nil, ErrBadArg
+		fmt.Fprintln(os.Stderr, "You should provide at least one issue ID to fetch with -i or --issue flag.")
+		os.Exit(1)
 	case 1:
 		// if it some id's but coma-separated?
 		sp := strings.Split(iid[0], ",")
@@ -162,8 +162,8 @@ func parseIssueID(iid []string) ([]int, error) {
 	for i := 0; i < len(iid); i++ {
 		id, err := strconv.Atoi(strings.TrimSpace(iid[0]))
 		if err != nil {
-			fmt.Printf("Bad issue ID: %s", err)
-			return nil, ErrBadArg
+			fmt.Fprintf(os.Stderr, "Bad issue ID: %s", err)
+			os.Exit(1)
 		}
 		issueID = append(issueID, id)
 	}
