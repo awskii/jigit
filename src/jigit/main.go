@@ -4,20 +4,21 @@ import (
 	"fmt"
 	"os"
 
+	"subcmd/commit"
 	"subcmd/config"
+	"subcmd/link"
 	"subcmd/list"
 
 	"github.com/jessevdk/go-flags"
-	"subcmd/link"
 )
 
 var cfg struct {
-	SubAdd     SubAdd        `command:"add" description:"create new issue"`
-	SubLs      list.Subcmd   `command:"ls" description:"list projects or issues at JIRA or GitLab"`
-	SubLn      link.SubLn    `command:"ln" description:"link GitLab issue with JIRA ticket (or vice versa)"`
-	SubConfig  config.Subcmd `command:"config" description:"configuration stuff"`
-	SubCommit  SubCommit     `command:"commit" description:"create, update or delete comments on task"`
-	SubVersion SubVersion    `command:"version" description:"print current jigit version"`
+	SubAdd     SubAdd           `command:"add" description:"create new issue"`
+	SubLs      list.Subcmd      `command:"ls" description:"list projects or issues at JIRA or GitLab"`
+	SubLn      link.SubLn       `command:"ln" description:"link GitLab issue with JIRA ticket (or vice versa)"`
+	SubConfig  config.Subcmd    `command:"config" description:"configuration stuff"`
+	SubCommit  commit.SubCommit `command:"commit" description:"create, update or delete comments on task"`
+	SubVersion SubVersion       `command:"version" description:"print current jigit version"`
 }
 
 func main() {
@@ -44,21 +45,10 @@ type SubAdd struct {
 	IssueBody  string   `short:"m"`
 	Priority   int      `short:"p"`
 	Issue      string   `short:"i"`
-	//ResolutionMessage string   `short:"m"`
 }
 
 func (o *SubAdd) Execute(v []string) error {
 	fmt.Println("open!", v)
-	return nil
-}
-
-type SubCommit struct {
-	Message string `short:"m"`
-	Issue   string `short:"i"`
-}
-
-func (c *SubCommit) Execute(v []string) error {
-	fmt.Println("ln!", v)
 	return nil
 }
 
@@ -67,6 +57,6 @@ var version = "0.0.1-alpha"
 type SubVersion struct{}
 
 func (c *SubVersion) Execute(v []string) error {
-	fmt.Printf("Current jigit version: %s\n", version)
+	fmt.Printf("Version: %s\n", version)
 	return nil
 }

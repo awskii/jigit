@@ -68,7 +68,7 @@ func (s *Storage) Set(bucket, key, value []byte) error {
 	return s.b.Update(fn)
 }
 
-func (s *Storage) CreateSymlink(jiraKey string, gitIssueID int) error {
+func (s *Storage) CreateSymlink(jiraKey, gitProject string, gitIssueID int) error {
 	fn := func(tx *bolt.Tx) error {
 		b := tx.Bucket(BucketIssueLinks)
 		if b == nil {
@@ -76,7 +76,7 @@ func (s *Storage) CreateSymlink(jiraKey string, gitIssueID int) error {
 		}
 		var (
 			jira = []byte(jiraKey)
-			git  = Itob(gitIssueID)
+			git  = []byte(fmt.Sprintf("%s#%d", gitProject, gitIssueID))
 		)
 
 		err := b.Put(jira, git)
@@ -88,7 +88,7 @@ func (s *Storage) CreateSymlink(jiraKey string, gitIssueID int) error {
 	return s.b.Update(fn)
 }
 
-func (s *Storage) DropSymlink(jiraKey string, gitIssueID int) error {
+func (s *Storage) DropSymlink(jiraKey, gitProject string, gitIssueID int) error {
 	fn := func(tx *bolt.Tx) error {
 		b := tx.Bucket(BucketIssueLinks)
 		if b == nil {
@@ -96,7 +96,7 @@ func (s *Storage) DropSymlink(jiraKey string, gitIssueID int) error {
 		}
 		var (
 			jira = []byte(jiraKey)
-			git  = Itob(gitIssueID)
+			git  = []byte(fmt.Sprintf("%s#%d", gitProject, gitIssueID))
 		)
 
 		err := b.Delete(jira)

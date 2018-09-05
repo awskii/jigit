@@ -131,6 +131,20 @@ func (j *Jira) Issue(issueID string) (*Issue, error) {
 	return issue, nil
 }
 
+func (j *Jira) Comment(issueID, message string) error {
+	j.InitClient()
+
+	opt := &jira.Comment{Body: message}
+	_, resp, err := j.client.Issue.AddComment(issueID, opt)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return errors.Errorf("unexpected status code returned: %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (j *Jira) InvalidateCache() {
 	j.storage.Invalidate(storage.BucketJiraIssueCache)
 }

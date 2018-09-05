@@ -94,7 +94,7 @@ func process(fl *SubLn) error {
 	gitProject, gitIID, jiraTicket := extractIDs(fl.Argv)
 
 	if fl.Drop {
-		err := disk.DropSymlink(jiraTicket, gitIID)
+		err := disk.DropSymlink(jiraTicket, gitProject, gitIID)
 		if err != nil {
 			return err
 		}
@@ -160,7 +160,7 @@ func process(fl *SubLn) error {
 		return errWg
 	}
 
-	if err = disk.CreateSymlink(ticket.Key, issue.IID); err != nil {
+	if err = disk.CreateSymlink(ticket.Key, gitProject, issue.IID); err != nil {
 		return err
 	}
 	fmt.Println("Successfully linked.")

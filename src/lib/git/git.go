@@ -126,6 +126,20 @@ func (git *Git) Issue(id int) (*Issue, error) {
 	return compactIssues(issue)[0], nil
 }
 
+func (git *Git) Comment(pid int, issueID int, message string) error {
+	git.InitClient()
+
+	opt := &gitlab.CreateIssueNoteOptions{Body: gitlab.String(message)}
+	_, resp, err := git.client.Notes.CreateIssueNote(pid, issueID, opt)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return errors.Errorf("unexpected response code %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func (git *Git) fetchRemoteProject(name string) (*Project, error) {
 	if err := git.InitClient(); err != nil {
 		return nil, err
