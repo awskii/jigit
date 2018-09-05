@@ -306,7 +306,7 @@ func (git *Git) ProjectNameByID(pid int) (string, error) {
 
 // Try to get project from storage. If no data found, try to fetch it from remote
 func (git *Git) ProjectByName(name string, noCache, alike bool) (*Project, error) {
-	var p *Project
+	p := new(Project)
 	if !noCache {
 		util.Debug("[CACHE] lookup git project by name '%s'", name)
 		b, err := git.storage.Get(storage.BucketGitProjectCache, []byte(name))
