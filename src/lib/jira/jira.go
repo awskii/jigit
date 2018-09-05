@@ -38,6 +38,14 @@ func New() (*Jira, error) {
 	return &Jira{cfg: cfg, storage: storage}, nil
 }
 
+func NewWithStorage(store *storage.Storage) (*Jira, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
+	return &Jira{cfg: cfg, storage: store}, nil
+}
+
 func (j *Jira) InitClient() error {
 	ep := j.cfg.Jira.Address
 	if ep == "" {
@@ -83,7 +91,7 @@ func (j *Jira) Endpoint() string {
 }
 
 func (j *Jira) Issue(issueID string) (*Issue, error) {
-	var issue *Issue
+	issue := new(Issue)
 
 	issueRaw, err := j.storage.Get(storage.BucketJiraIssueCache, []byte(issueID))
 	if err != nil {

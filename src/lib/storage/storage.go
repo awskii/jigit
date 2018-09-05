@@ -2,11 +2,11 @@ package storage
 
 import (
 	"crypto/aes"
-	"errors"
+	"encoding/binary"
 	"fmt"
 
-	"encoding/binary"
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 )
 
 type Storage struct {
@@ -64,6 +64,46 @@ func (s *Storage) Set(bucket, key, value []byte) error {
 	fn := func(tx *bolt.Tx) error {
 		b := tx.Bucket(bucket)
 		return b.Put(key, value)
+	}
+	return s.b.Update(fn)
+}
+
+func (s *Storage) CreateSymlink(jiraKey string, gitIssueID int) error {
+	fn := func(tx *bolt.Tx) error {
+		b := tx.Bucket(BucketIssueLinks)
+		if b == nil {
+			return errors.New("bucket did not initialized")
+		}
+		var (
+			jira = []byte(jiraKey)
+			git  = Itob(gitIssueID)
+		)
+
+		err := b.Put(jira, git)
+		if err != nil {
+			return err
+		}
+		return b.Put(git, jira)
+	}
+	return s.b.Update(fn)
+}
+
+func (s *Storage) DropSymlink(jiraKey string, gitIssueID int) error {
+	fn := func(tx *bolt.Tx) error {
+		b := tx.Bucket(BucketIssueLinks)
+		if b == nil {
+			return errors.Errorf("bucket '%s' did not initialized", string(BucketIssueLinks))
+		}
+		var (
+			jira = []byte(jiraKey)
+			git  = Itob(gitIssueID)
+		)
+
+		err := b.Delete(jira)
+		if err != nil {
+			return err
+		}
+		return b.Delete(git)
 	}
 	return s.b.Update(fn)
 }
@@ -139,15 +179,12 @@ func Decrypt(key, data []byte) ([]byte, error) {
 	return dec, nil
 }
 
-func (s *Storage) CreateSymlink(jiraKey string, gitProjectId int) error {
-	fn := func(tx *bolt.Tx) error {
-		b := tx.Bucket(BucketIssueLinks)
-		if b == nil {
-			return errors.New("bucket did not initialized")
-		}
-		pid := make([]byte, 0)
-		binary.BigEndian.PutUint64(pid, uint64(gitProjectId))
-		return b.Put([]byte(jiraKey), pid)
-	}
-	return s.b.Update(fn)
+func Itob(v int) []byte {
+	res := make([]byte, 8)
+	binary.BigEndian.PutUint64(res, uint64(v))
+	return res
+}
+
+func Btoi(b []byte) int {
+	return int(binary.BigEndian.Uint64(b))
 }

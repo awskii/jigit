@@ -45,6 +45,14 @@ func New() (*Git, error) {
 	return &Git{cfg: cfg, storage: storage}, nil
 }
 
+func NewWithStorage(store *storage.Storage) (*Git, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
+	return &Git{cfg: cfg, storage: store}, nil
+}
+
 // Lazy gitlab client initialization
 func (git *Git) InitClient() error {
 	if git.ready {
@@ -80,6 +88,56 @@ func (git *Git) InitClient() error {
 	}
 	git.ready = true
 	return nil
+}
+
+func (git *Git) Project(name string) (*Project, error) {
+	fmt.Printf("Fetching GitLab project\n")
+
+	proj, err := git.storage.Get(storage.BucketGitProjectCache, []byte(name))
+	if err != nil {
+		return git.fetchRemoteProject(name)
+	}
+
+	project := new(Project)
+	if err := project.Decode(proj); err != nil {
+		return nil, err
+	}
+	return project, nil
+}
+
+func (git *Git) Issue(id int) (*Issue, error) {
+	fmt.Printf("Fetching GitLab issue '%d'\n", id)
+	opt := &gitlab.ListIssuesOptions{IIDs: []int{id}}
+
+	issue, resp, err := git.client.Issues.ListIssues(opt)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("bad status returned")
+	}
+	if len(issue) > 1 {
+		return nil, errors.New("server respond with wrong issues count")
+	}
+	if len(issue) == 0 {
+		return nil, errors.New("issue not found")
+	}
+
+	return compactIssues(issue)[0], nil
+}
+
+func (git *Git) fetchRemoteProject(name string) (*Project, error) {
+	if err := git.InitClient(); err != nil {
+		return nil, err
+	}
+	p, resp, err := git.client.Projects.GetProject(name)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("bad status returned")
+	}
+	return newProject(p), nil
 }
 
 func (git *Git) ListProjects(limit int, noCache bool) ([]*Project, error) {
