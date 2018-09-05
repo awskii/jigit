@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"syscall"
 	"unicode/utf8"
@@ -82,5 +83,12 @@ func StringToFixedWidth(str string, width int) string {
 }
 
 func Debug(format string, argv ...interface{}) {
-	fmt.Printf("[DEBUG] "+format+"\n", argv...)
+	var srcFileInfo string
+	if pc, file, line, ok := runtime.Caller(1); ok {
+		fnameElems := strings.Split(file, "/")
+		funcNameElems := strings.Split(runtime.FuncForPC(pc).Name(), "/")
+		srcFileInfo = fmt.Sprintf("[caused by %s:%d %s]",
+			strings.Join(fnameElems[len(fnameElems)-3:], "/"), line, funcNameElems[len(funcNameElems)-1])
+	}
+	fmt.Printf("[DEBUG] "+format+" "+srcFileInfo+"\n", argv...)
 }
