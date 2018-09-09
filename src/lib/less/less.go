@@ -26,12 +26,8 @@ func NewFile() (*File, error) {
 	return &File{File: f, l: less}, nil
 }
 
-func (f *File) Render() error {
-	return f.l.Start()
-}
-
-func (f *File) Wait() error {
-	return f.l.Wait()
+func (f *File) Run() error {
+	return f.l.Run()
 }
 
 func (f *File) Close() error {

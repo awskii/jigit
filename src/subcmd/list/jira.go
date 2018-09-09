@@ -95,8 +95,7 @@ func renderJiraDetailedIssue(i *jira.Issue, endpoint string) error {
 	printIssueSubtasks(out, i.Subtasks)
 	printIssueComments(out, i.Comments)
 
-	out.Render()
-	out.Wait()
+	out.Run()
 	return nil
 }
 
@@ -122,8 +121,7 @@ func renderJiraProjects(li []*jira.Project) error {
 	}
 	table.Render()
 
-	out.Render()
-	out.Wait()
+	out.Run()
 	return nil
 }
 

@@ -133,8 +133,7 @@ func renderGitDetailedIssue(issue *git.Issue, notes []*git.Comment) {
 			printIfEdited(note.UpdatedAt.Equal(note.CreatedAt)),
 			util.StringToFixedWidth(note.Body, textWidthSize), sepComment)
 	}
-	out.Render()
-	out.Wait()
+	out.Run()
 }
 
 func printIfEdited(cond bool) string {
