@@ -11,7 +11,7 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-type Subcmd struct {
+type Cmd struct {
 	Set  bool `long:"set" description:"save key value pair"`
 	Show bool `long:"show" description:"show current config values"`
 
@@ -33,7 +33,7 @@ type Config struct {
 	} `toml:"storage"`
 }
 
-func Process(fl Subcmd) error {
+func Process(fl Cmd) error {
 	cfg, err := Load()
 	if err != nil {
 		cfg = new(Config)
@@ -75,7 +75,7 @@ func Process(fl Subcmd) error {
 	return cfg.save()
 }
 
-func (s *Subcmd) Execute(argv []string) error {
+func (s *Cmd) Execute(argv []string) error {
 	s.Active, s.Argv = true, argv
 	return nil
 }

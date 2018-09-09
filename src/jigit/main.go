@@ -14,13 +14,12 @@ import (
 )
 
 var cfg struct {
-	SubAdd     SubAdd           `command:"add" description:"create new issue"`
-	SubLs      list.Subcmd      `command:"ls" description:"list projects or issues at JIRA or GitLab"`
-	SubLn      link.SubLn       `command:"ln" description:"link GitLab issue with JIRA ticket (or vice versa)"`
-	SubConfig  config.Subcmd    `command:"config" description:"configuration stuff"`
-	SubCommit  commit.SubCommit `command:"commit" description:"create, update or delete comments on task"`
-	SubVersion SubVersion       `command:"version" description:"print current jigit version"`
 	SubAdd     newp.Cmd   `command:"add" description:"create new issue"`
+	SubLs      list.Cmd   `command:"ls" description:"list projects or issues at JIRA or GitLab"`
+	SubLn      link.Cmd   `command:"ln" description:"link GitLab issue with JIRA ticket (or vice versa)"`
+	SubConfig  config.Cmd `command:"config" description:"configuration stuff"`
+	SubCommit  commit.Cmd `command:"commit" description:"create, update or delete comments on task"`
+	SubVersion VersionCmd `command:"version" description:"print current jigit version"`
 }
 
 func main() {
@@ -41,11 +40,14 @@ func main() {
 	}
 }
 
-var version = "0.0.1-alpha"
+var (
+	version  = "0.0.1-alpha"
+	Revision = "unknown"
+)
 
-type SubVersion struct{}
+type VersionCmd struct{}
 
-func (c *SubVersion) Execute(v []string) error {
-	fmt.Printf("Version: %s\n", version)
+func (c *VersionCmd) Execute(v []string) error {
+	fmt.Printf("%s-%s\n", version, Revision)
 	return nil
 }

@@ -16,7 +16,7 @@ var (
 	ErrBadAddress = errors.New("bad address provided")
 )
 
-type Subcmd struct {
+type Cmd struct {
 	JiraMode    bool     `short:"j" long:"jira" description:"if provided, listings will be fetched from Jira instead of GitLab"`
 	Assigned    bool     `short:"a" long:"assigned" description:"show all issues assigned to me"`
 	Projects    bool     `short:"P" description:"list projects instead of issues"`
@@ -33,12 +33,12 @@ type Subcmd struct {
 	Argv   []string
 }
 
-func (ls *Subcmd) Execute(argv []string) error {
+func (ls *Cmd) Execute(argv []string) error {
 	ls.Argv, ls.Active = argv, true
 	return nil
 }
 
-func Process(fl Subcmd) error {
+func Process(fl Cmd) error {
 	if fl.JiraMode {
 		return proceedJira(fl)
 	}

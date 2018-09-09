@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"encoding/binary"
 	"fmt"
-
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 )

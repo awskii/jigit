@@ -16,7 +16,7 @@ import (
 
 const jiraTime = "2006-01-02T15:04:05.999-0700"
 
-func proceedJira(fl Subcmd) error {
+func proceedJira(fl Cmd) error {
 	jr, err := jira.New()
 	if err != nil {
 		return err

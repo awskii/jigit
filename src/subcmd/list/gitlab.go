@@ -15,7 +15,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-func proceedGit(fl Subcmd) error {
+func proceedGit(fl Cmd) error {
 	git, err := git.New()
 	if err != nil {
 		return err

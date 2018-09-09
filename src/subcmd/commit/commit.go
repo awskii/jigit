@@ -11,7 +11,7 @@ import (
 	"subcmd/config"
 )
 
-type SubCommit struct {
+type Cmd struct {
 	Message string `short:"m" long:"message" description:"commit message"`
 	Issue   string `short:"i" description:"gitlab issue id to commit on"`
 	Status  string `short:"s" long:"status" description:"new issue status.Changes both"`
@@ -20,7 +20,7 @@ type SubCommit struct {
 	Argv   []string
 }
 
-func (c *SubCommit) Execute(v []string) error {
+func (c *Cmd) Execute(v []string) error {
 	c.Active, c.Argv = true, v
 	return process(c)
 }
@@ -43,7 +43,7 @@ func extractIDs(argv []string) (gitlabProject string, issueID int) {
 	return
 }
 
-func process(c *SubCommit) error {
+func process(c *Cmd) error {
 	//if c.Issue == "" {
 	//	fmt.Fprintln(os.Stderr, "You should provide issue ID to commit.")
 	//	os.Exit(1)

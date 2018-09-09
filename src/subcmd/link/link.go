@@ -13,7 +13,7 @@ import (
 	"subcmd/config"
 )
 
-type SubLn struct {
+type Cmd struct {
 	Drop bool `short:"d" long:"drop" description:"delete provided link"`
 	List bool `short:"l" long:"list" description:"print all existing links"`
 
@@ -28,7 +28,7 @@ func usage() {
 	os.Exit(1)
 }
 
-func (ln *SubLn) Execute(v []string) error {
+func (ln *Cmd) Execute(v []string) error {
 	ln.Active, ln.Argv = true, v
 	return process(ln)
 }
@@ -76,7 +76,7 @@ func extractIDs(argv []string) (gitlabProject string, issueID int, jiraTicket st
 	return
 }
 
-func process(fl *SubLn) error {
+func process(fl *Cmd) error {
 	if len(fl.Argv) == 0 && !fl.List {
 		usage()
 	}
