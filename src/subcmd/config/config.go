@@ -20,6 +20,7 @@ type Cmd struct {
 }
 
 type Config struct {
+	Editor string
 	GitLab struct {
 		Address string `toml:"address"`
 	} `toml:"gitlab"`
@@ -42,6 +43,7 @@ func Process(fl Cmd) error {
 	switch {
 	case fl.Show:
 		fmt.Println("Current config values are:")
+		fmt.Printf("\teditor: %s\n", cfg.Editor)
 		fmt.Printf("\tgitlab.address: %s\n", cfg.GitLab.Address)
 		fmt.Printf("\tjira.address: %s\n", cfg.Jira.Address)
 		fmt.Println()
@@ -94,6 +96,8 @@ var (
 		"  storage.path      - <string> path to storage storage file",
 		"  storage.encrypt   - <bool>   defines if sensitive data (your tokens at least) should be encrypted",
 		"  storage.off_cache - <bool>   disables projects and issue caches if true",
+		"\n Misc\n",
+		"  editor - <string> same as $EDITOR environment variable",
 	}
 )
 
@@ -120,6 +124,9 @@ func Load() (*Config, error) {
 	if err != nil {
 		return initDefaultConfig(), err
 	}
+	if c.Editor == "" {
+		c.Editor = os.Getenv("EDITOR")
+	}
 	if !path.IsAbs(c.Storage.Path) {
 		return nil, errors.New("please, specify full path to cache file")
 	}
@@ -128,6 +135,8 @@ func Load() (*Config, error) {
 
 func (c *Config) setValue(key, value string) error {
 	switch key {
+	case "editor":
+		c.Editor = value
 	case "gitlab.address":
 		c.GitLab.Address = value
 	case "jira.address":
