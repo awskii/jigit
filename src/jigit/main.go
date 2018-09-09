@@ -8,6 +8,7 @@ import (
 	"subcmd/config"
 	"subcmd/link"
 	"subcmd/list"
+	newp "subcmd/new"
 
 	"github.com/jessevdk/go-flags"
 )
@@ -19,6 +20,7 @@ var cfg struct {
 	SubConfig  config.Subcmd    `command:"config" description:"configuration stuff"`
 	SubCommit  commit.SubCommit `command:"commit" description:"create, update or delete comments on task"`
 	SubVersion SubVersion       `command:"version" description:"print current jigit version"`
+	SubAdd     newp.Cmd   `command:"add" description:"create new issue"`
 }
 
 func main() {
@@ -37,19 +39,6 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
-}
-
-type SubAdd struct {
-	IssueTitle string   `short:"t"`
-	IssueTags  []string `long:"tags"`
-	IssueBody  string   `short:"m"`
-	Priority   int      `short:"p"`
-	Issue      string   `short:"i"`
-}
-
-func (o *SubAdd) Execute(v []string) error {
-	fmt.Println("open!", v)
-	return nil
 }
 
 var version = "0.0.1-alpha"
