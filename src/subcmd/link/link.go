@@ -23,8 +23,9 @@ type Cmd struct {
 
 func usage() {
 	fmt.Fprintf(os.Stderr,
-		"To create link between GitLab issue and Jira ticket, use next syntax:\n\t"+
-			"jigit ln JIRA-ID GITLAB_PROJECT_NAME#ISSUE_ID\n")
+		"To create link between GitLab issue and Jira ticket, use next syntax:\n"+
+			"  jigit ln JIRA-ID GITLAB_PROJECT_NAME#ISSUE_ID\n\n"+
+			"Use -h or --help flag to see detailed usage.\n")
 	os.Exit(1)
 }
 
