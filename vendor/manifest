@@ -39,6 +39,12 @@
 			"branch": "master"
 		},
 		{
+			"importpath": "github.com/kentaro-m/blackfriday-confluence",
+			"repository": "https://github.com/kentaro-m/blackfriday-confluence",
+			"revision": "3a37b25b4ee2b1068486386955b6a5d4e32fa3ab",
+			"branch": "master"
+		},
+		{
 			"importpath": "github.com/mattn/go-runewidth",
 			"repository": "https://github.com/mattn/go-runewidth",
 			"revision": "ce7b0b5c7b45a81508558cd1dba6bb1e4ddb51bb",
@@ -54,6 +60,12 @@
 			"importpath": "github.com/pkg/errors",
 			"repository": "https://github.com/pkg/errors",
 			"revision": "816c9085562cd7ee03e7f8188a1cfd942858cded",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/shurcooL/sanitized_anchor_name",
+			"repository": "https://github.com/shurcooL/sanitized_anchor_name",
+			"revision": "86672fcb3f950f35f2e675df2240550f2a50762f",
 			"branch": "master"
 		},
 		{
@@ -102,6 +114,12 @@
 			"revision": "0ffbfd41fbef8ffcf9b62b0b0aa3a5873ed7a4fe",
 			"branch": "master",
 			"path": "/unix"
+		},
+		{
+			"importpath": "gopkg.in/russross/blackfriday.v2",
+			"repository": "https://gopkg.in/russross/blackfriday.v2",
+			"revision": "cadec560ec52d93835bf2f15bd794700d3a2473b",
+			"branch": "master"
 		}
 	]
 }

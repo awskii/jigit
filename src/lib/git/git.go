@@ -126,15 +126,29 @@ func (git *Git) Issue(id int) (*Issue, error) {
 	return compactIssues(issue)[0], nil
 }
 
-func (git *Git) Comment(pid int, issueID int, message string) error {
+func (git *Git) Comment(pid, issueID int, message string) (int, error) {
 	git.InitClient()
 
 	opt := &gitlab.CreateIssueNoteOptions{Body: gitlab.String(message)}
-	_, resp, err := git.client.Notes.CreateIssueNote(pid, issueID, opt)
+	c, resp, err := git.client.Notes.CreateIssueNote(pid, issueID, opt)
+	if err != nil {
+		return 0, err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return 0, errors.Errorf("unexpected response code %d", resp.StatusCode)
+	}
+	return c.ID, nil
+}
+
+func (git *Git) DeleteComment(pid, issueID, commentID int) error {
+	git.InitClient()
+
+	resp, err := git.client.Notes.DeleteIssueNote(pid, issueID, commentID)
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println(resp.Status)
 		return errors.Errorf("unexpected response code %d", resp.StatusCode)
 	}
 	return nil
