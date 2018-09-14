@@ -46,6 +46,19 @@ func NewWithStorage(store *storage.Storage) (*Jira, error) {
 	return &Jira{cfg: cfg, storage: store}, nil
 }
 
+func (j *Jira) User() (*User, error) {
+	j.InitClient()
+	u, resp, err := j.client.User.GetSelf()
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("got bad response code")
+	}
+	user := stripUser(u)
+	return &user, nil
+}
+
 func (j *Jira) InitClient() error {
 	ep := j.cfg.Jira.Address
 	if ep == "" {
@@ -128,6 +141,28 @@ func (j *Jira) Issue(issueID string) (*Issue, error) {
 		}
 	}
 
+	return issue, nil
+}
+
+func (j *Jira) CreateIssue(issue *Issue) (*Issue, error) {
+	is, resp, err := j.client.Issue.Create(extendIssue(issue))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("bad status returned")
+	}
+	issue = stripIssue(is)
+	buf := new(bytes.Buffer)
+
+	if err = issue.Encode(buf); err != nil {
+		util.Debug("issue encode failed: %s", err)
+	} else {
+		err = j.storage.Set(storage.BucketJiraIssueCache, []byte(issue.Key), buf.Bytes())
+		if err != nil {
+			util.Debug("issue store failed: %s", err)
+		}
+	}
 	return issue, nil
 }
 
@@ -258,6 +293,19 @@ type Issue struct {
 	PriorityName string
 }
 
+func extendIssue(i *Issue) *jira.Issue {
+	return &jira.Issue{
+		Fields: &jira.IssueFields{
+			Summary:     i.Summary,
+			Description: i.Description,
+			Assignee:    extendUser(&i.Assignee),
+			Creator:     extendUser(&i.Creator),
+			//Status: i.StatusName,
+			//Type: i.Type,
+		},
+	}
+}
+
 func compactIssues(li []jira.Issue) []*Issue {
 	res := make([]*Issue, len(li))
 	for i := 0; i < len(res); i++ {
@@ -341,6 +389,13 @@ func stripUser(u *jira.User) User {
 		return User{}
 	}
 	return User{
+		DisplayName: u.DisplayName,
+		Name:        u.Name,
+	}
+}
+
+func extendUser(u *User) *jira.User {
+	return &jira.User{
 		DisplayName: u.DisplayName,
 		Name:        u.Name,
 	}

@@ -53,6 +53,25 @@ func NewWithStorage(store *storage.Storage) (*Git, error) {
 	return &Git{cfg: cfg, storage: store}, nil
 }
 
+func (git *Git) User() (*User, error) {
+	git.InitClient()
+
+	passprhrase := []byte("key")
+	login, pass, err := git.credentials(passprhrase)
+	opt := &gitlab.GetSessionOptions{
+		Login:    gitlab.String(login),
+		Password: gitlab.String(pass),
+	}
+	u, resp, err := git.client.Session.GetSession(opt)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("bad response HTTP code")
+	}
+	return stripUser(u), nil
+}
+
 // Lazy gitlab client initialization
 func (git *Git) InitClient() error {
 	if git.ready {
@@ -124,6 +143,52 @@ func (git *Git) Issue(id int) (*Issue, error) {
 	}
 
 	return compactIssues(issue)[0], nil
+}
+
+func (git *Git) CreateIssue(issue *Issue) (*Issue, error) {
+	opt := &gitlab.CreateIssueOptions{
+		Title:       gitlab.String(issue.Title),
+		Labels:      gitlab.Labels(issue.Labels),
+		Description: gitlab.String(issue.Description),
+		//AssigneeIDs: git.InitClient()
+	}
+
+	newIssue, resp, err := git.client.Issues.CreateIssue(issue.ProjectID, opt)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("bad status returned")
+	}
+	return compactIssues([]*gitlab.Issue{newIssue})[0], nil
+}
+
+func (git *Git) DeleteIssue(pid, iid int) error {
+	resp, err := git.client.Issues.DeleteIssue(pid, iid)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New("bad status returned")
+	}
+	return nil
+}
+
+func (git *Git) UpdateIssue(issue *Issue) (*Issue, error) {
+	opt := &gitlab.UpdateIssueOptions{
+		Title:       gitlab.String(issue.Title),
+		Description: gitlab.String(issue.Description),
+		Labels:      issue.Labels,
+		StateEvent:  gitlab.String(issue.State),
+	}
+	newIssue, resp, err := git.client.Issues.UpdateIssue(issue.ProjectID, issue.IID, opt)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New("bad status returned")
+	}
+	return compactIssues([]*gitlab.Issue{newIssue})[0], nil
 }
 
 func (git *Git) Comment(pid, issueID int, message string) (int, error) {
@@ -573,4 +638,20 @@ func (c *Comment) Encode(into io.Writer) error {
 
 func (c *Comment) Decode(v []byte) error {
 	return gob.NewDecoder(bytes.NewBuffer(v)).Decode(c)
+}
+
+type User struct {
+	ID    int
+	Name  string
+	Login string
+	Token string
+}
+
+func stripUser(u *gitlab.Session) *User {
+	return &User{
+		ID:    u.ID,
+		Name:  u.Name,
+		Login: u.Username,
+		Token: u.PrivateToken,
+	}
 }
