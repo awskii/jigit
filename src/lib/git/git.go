@@ -151,8 +151,8 @@ func (git *Git) CreateIssue(issue *Issue) (*Issue, error) {
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New("bad status returned")
+	if resp.StatusCode != http.StatusCreated {
+		return nil, errors.Errorf("unexpected HTTP status %d returned", resp.StatusCode)
 	}
 	return compactIssues([]*gitlab.Issue{newIssue})[0], nil
 }
