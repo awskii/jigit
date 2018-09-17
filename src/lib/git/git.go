@@ -56,13 +56,7 @@ func NewWithStorage(store *storage.Storage) (*Git, error) {
 func (git *Git) User() (*User, error) {
 	git.InitClient()
 
-	passprhrase := []byte("key")
-	login, pass, err := git.credentials(passprhrase)
-	opt := &gitlab.GetSessionOptions{
-		Login:    gitlab.String(login),
-		Password: gitlab.String(pass),
-	}
-	u, resp, err := git.client.Session.GetSession(opt)
+	u, resp, err := git.client.Users.CurrentUser()
 	if err != nil {
 		return nil, err
 	}
