@@ -48,7 +48,7 @@ func exec(c *Cmd, argv []string) error {
 		os.Exit(1)
 	}
 
-	if cfg.Editor != "" {
+	if c.Title == "" && cfg.Editor != "" {
 		v, err := editor.NewFile(cfg.Editor, "new-issue")
 		if err != nil {
 			return err
