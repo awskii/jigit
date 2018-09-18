@@ -120,9 +120,16 @@ func exec(c *Cmd, argv []string) error {
 		Creator:     *jiraUser,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Can't create Jira ticket: %s", err)
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
-		err = git.DeleteIssue(gitIssue.ProjectID, gitIssue.IID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Can't create Jira ticket: %s\n", err)
+
+		gitIssue.State = libgit.IssueStateClose
+		gitIssue.Description = "Issue closed automatically due to unexpected Jira response."
+		_, err = git.UpdateIssue(gitIssue)
 		if err != nil {
 			fmt.Fprintf(os.Stderr,
 				"Can't remove already created git isssue #%d: %s\n", gitIssue.IID, err)
@@ -133,7 +140,7 @@ func exec(c *Cmd, argv []string) error {
 		os.Exit(1)
 	}
 
-	err = disk.CreateSymlink(jiraIssue.Key, p.Name, gitIssue.IID)
+	err = disk.CreateSymlink(jiraIssue.Key, projectName, gitIssue.IID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr,
 			"Issue has been created, but was not linked: %s\n", err)
