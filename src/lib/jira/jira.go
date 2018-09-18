@@ -145,14 +145,24 @@ func (j *Jira) Issue(issueID string) (*Issue, error) {
 }
 
 func (j *Jira) CreateIssue(issue *Issue) (*Issue, error) {
-	is, resp, err := j.client.Issue.Create(extendIssue(issue))
+	meta, resp, err := j.client.Issue.GetCreateMeta("STORAGE")
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
+
+	m := meta.Projects[0]
+	extendedIssue := extendIssue(issue)
+	extendedIssue.Fields.Type = jira.IssueType{ID: "3"}
+	extendedIssue.Fields.Project = jira.Project{Key: m.Key}
+
+	is, resp, err := j.client.Issue.Create(extendedIssue)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusCreated {
 		return nil, errors.New("bad status returned")
 	}
-	issue = stripIssue(is)
+	issue.Key = is.Key
 	buf := new(bytes.Buffer)
 
 	if err = issue.Encode(buf); err != nil {
@@ -299,7 +309,6 @@ func extendIssue(i *Issue) *jira.Issue {
 			Summary:     i.Summary,
 			Description: i.Description,
 			Assignee:    extendUser(&i.Assignee),
-			Creator:     extendUser(&i.Creator),
 			//Status: i.StatusName,
 			//Type: i.Type,
 		},
