@@ -16,7 +16,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var ErrBadEndpoint = errors.New("bad or emtpy endpoint")
+var ErrBadEndpoint = errors.New("bad or empty endpoint")
 
 type Jira struct {
 	endpoint string

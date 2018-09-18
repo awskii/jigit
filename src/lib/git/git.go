@@ -140,6 +140,7 @@ func (git *Git) Issue(id int) (*Issue, error) {
 }
 
 func (git *Git) CreateIssue(issue *Issue) (*Issue, error) {
+	util.Debug("Creating issue at project %v", issue.ProjectID)
 	opt := &gitlab.CreateIssueOptions{
 		Title:       gitlab.String(issue.Title),
 		Labels:      gitlab.Labels(issue.Labels),

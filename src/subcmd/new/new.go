@@ -43,8 +43,8 @@ func exec(c *Cmd, argv []string) error {
 
 	projectName := c.Project
 	if projectName == "" {
-		fmt.Fprintf(os.Stderr,
-			"You should specify GitLab project name with -p or --project flag . See --help for details.")
+		fmt.Fprintln(os.Stderr,
+			"You should specify GitLab project name with -p or --project flag. See --help for details.")
 		os.Exit(1)
 	}
 
@@ -109,7 +109,7 @@ func exec(c *Cmd, argv []string) error {
 		AssigneeUsername: gitUser.Login,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Can't create GitLab ticket: %s", err)
+		fmt.Fprintf(os.Stderr, "Can't create GitLab ticket: %s\n", err)
 		os.Exit(1)
 	}
 
@@ -125,24 +125,24 @@ func exec(c *Cmd, argv []string) error {
 		err = git.DeleteIssue(gitIssue.ProjectID, gitIssue.IID)
 		if err != nil {
 			fmt.Fprintf(os.Stderr,
-				"Can't remove already created git isssue #%s: %s", gitIssue.IID, err)
+				"Can't remove already created git isssue #%d: %s\n", gitIssue.IID, err)
 			os.Exit(1)
 		}
-		fmt.Fprintf(os.Stderr,
-			"Ticket was not creted, gitlab issue has been removed successfully.")
+		fmt.Fprintln(os.Stderr,
+			"Ticket was not created, gitlab issue has been closed successfully.")
 		os.Exit(1)
 	}
 
 	err = disk.CreateSymlink(jiraIssue.Key, p.Name, gitIssue.IID)
 	if err != nil {
 		fmt.Fprintf(os.Stderr,
-			"Issue has been created, but was not linked: %s", err)
+			"Issue has been created, but was not linked: %s\n", err)
 		fmt.Fprintf(os.Stderr,
 			"You can link it by yoursulf. Git: '%s#%d' Jira: '%s'",
 			p.Name, gitIssue.IID, jiraIssue.Key)
 		return err
 	}
-	fmt.Printf("Issue '%s#%d'/'%s' has been created and linked successfully.",
+	fmt.Printf("Issue '%s#%d'/'%s' has been created and linked successfully.\n",
 		p.Name, gitIssue.IID, jiraIssue.Key)
 	return nil
 }
