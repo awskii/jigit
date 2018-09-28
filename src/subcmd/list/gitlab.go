@@ -86,7 +86,7 @@ func renderGitProjectIssues(issues []*git.Issue) {
 	table.SetBorder(false)
 	for _, issue := range issues {
 		iid := fmt.Sprintf("%d", issue.IID)
-		table.Append([]string{iid, strings.ToUpper(issue.State), issue.Title})
+		table.Append([]string{iid, string(issue.State), issue.Title})
 	}
 	table.Render()
 	fmt.Printf("\n")
@@ -102,7 +102,7 @@ func renderGitAssignedIssues(git *git.Git, issues []*git.Issue) {
 		pname, _ := git.ProjectNameByID(issue.ProjectID)
 		iid := fmt.Sprintf("%d", issue.IID)
 
-		table.Append([]string{pname, iid, strings.ToUpper(issue.State), issue.Title})
+		table.Append([]string{pname, iid, string(issue.State), issue.Title})
 	}
 	table.Render()
 	fmt.Printf("\n")
@@ -123,7 +123,7 @@ func renderGitDetailedIssue(issue *git.Issue, notes []*git.Comment) {
 	// todo link jira issue
 	fmt.Fprintf(out, " Issue #%d (%s): %s tags: %s\n\n Project:\t%d\n Jira task:\t%d\n"+
 		" Assignee:\t%s\n Created at:\t%s (%s)\n Link:\t\t%s\n\n%s%s\n",
-		issue.IID, strings.ToUpper(issue.State), issue.Title, issue.Labels,
+		issue.IID, issue.State, issue.Title, issue.Labels,
 		issue.ProjectID, 777, issue.AssigneeName, issue.CreatedAt.Format(time.RFC850),
 		util.RelativeTime(issue.CreatedAt),
 		issue.WebURL, util.StringToFixedWidth(issue.Description, textWidthSize), sepIssue)

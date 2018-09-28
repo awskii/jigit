@@ -23,6 +23,26 @@ var (
 	ErrBadEndpoint = errors.New("bad or empty endpoint")
 )
 
+type IssueState string
+
+const (
+	IssueStateOpen   IssueState = "OPEN"
+	IssueStateClose  IssueState = "CLOSE"
+	IssueStateReopen IssueState = "REOPEN"
+)
+
+func convertState(state string) (ist IssueState) {
+	switch strings.ToUpper(state) {
+	case "OPEN":
+		ist = IssueStateOpen
+	case "CLOSE":
+		ist = IssueStateClose
+	case "REOPEN":
+		ist = IssueStateReopen
+	}
+	return
+}
+
 type Git struct {
 	endpoint string
 	cfg      *config.Config
@@ -158,23 +178,24 @@ func (git *Git) CreateIssue(issue *Issue) (*Issue, error) {
 	return compactIssues([]*gitlab.Issue{newIssue})[0], nil
 }
 
-func (git *Git) DeleteIssue(pid, iid int) error {
-	resp, err := git.client.Issues.DeleteIssue(pid, iid)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return errors.New("bad status returned")
-	}
-	return nil
-}
+//func (git *Git) DeleteIssue(pid, iid int) error {
+//	util.Debug("Removing issue %d at project %v", iid, pid)
+//	resp, err := git.client.Issues.DeleteIssue(pid, iid)
+//	if err != nil {
+//		return err
+//	}
+//	if resp.StatusCode != http.StatusOK {
+//		return errors.New("bad status returned")
+//	}
+//	return nil
+//}
 
 func (git *Git) UpdateIssue(issue *Issue) (*Issue, error) {
 	opt := &gitlab.UpdateIssueOptions{
 		Title:       gitlab.String(issue.Title),
 		Description: gitlab.String(issue.Description),
 		Labels:      issue.Labels,
-		StateEvent:  gitlab.String(issue.State),
+		StateEvent:  gitlab.String(strings.ToLower(string(issue.State))),
 	}
 	newIssue, resp, err := git.client.Issues.UpdateIssue(issue.ProjectID, issue.IID, opt)
 	if err != nil {
@@ -431,8 +452,16 @@ func (git *Git) storeProjects(projects []*Project) error {
 }
 
 // Try to get name from storage. If data not found, try to fetch it from remote
-func (git *Git) ProjectNameByID(pid int) (string, error) {
-	name, err := git.storage.Get(storage.BucketGitProjectCache, []byte(strconv.Itoa(pid)))
+func (git *Git) ProjectNameByID(pid interface{}) (string, error) {
+	var pidb []byte
+
+	switch pid.(type) {
+	case int:
+		pid = []byte(strconv.Itoa(pid.(int)))
+	case string:
+		pid = []byte(pid.(string))
+	}
+	name, err := git.storage.Get(storage.BucketGitProjectCache, pidb)
 	if err == nil { // found
 		return string(name), nil
 	}
@@ -548,9 +577,9 @@ func (p *Project) Decode(v []byte) error {
 type Issue struct {
 	IID              int
 	Title            string
-	State            string
+	State            IssueState
 	Labels           []string
-	ProjectID        int
+	ProjectID        interface{}
 	AssigneeName     string
 	AssigneeUsername string
 	CreatedAt        time.Time
@@ -567,7 +596,7 @@ func newIssue(i *gitlab.Issue) *Issue {
 	return &Issue{
 		IID:              i.IID,
 		Title:            i.Title,
-		State:            i.State,
+		State:            convertState(i.State),
 		Labels:           i.Labels,
 		ProjectID:        i.ProjectID,
 		AssigneeName:     i.Assignee.Name,
@@ -639,14 +668,12 @@ type User struct {
 	ID    int
 	Name  string
 	Login string
-	Token string
 }
 
-func stripUser(u *gitlab.Session) *User {
+func stripUser(u *gitlab.User) *User {
 	return &User{
 		ID:    u.ID,
 		Name:  u.Name,
 		Login: u.Username,
-		Token: u.PrivateToken,
 	}
 }

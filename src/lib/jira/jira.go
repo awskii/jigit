@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"lib/storage"
@@ -44,6 +45,62 @@ func NewWithStorage(store *storage.Storage) (*Jira, error) {
 		return nil, err
 	}
 	return &Jira{cfg: cfg, storage: store}, nil
+}
+
+type Kind uint8
+
+const (
+	kindInvalid Kind = iota
+	KindBug
+	KindFeature
+	KindEnhancement
+)
+
+type RemoteTag struct {
+	ID    string
+	Label string
+	Kind  Kind
+}
+
+func detectKind(k string) Kind {
+	switch strings.ToUpper(k) {
+	case "BUG":
+		return KindBug
+	case "FEATURE":
+		return KindFeature
+	case "ENHANCEMENT":
+		return KindEnhancement
+	}
+	return kindInvalid
+}
+
+func (j *Jira) RemoteTags(projectKey string) ([3]*RemoteTag, error) {
+	meta, resp, err := j.client.Issue.GetCreateMeta(projectKey)
+	if err != nil {
+		return [3]*RemoteTag{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return [3]*RemoteTag{}, err
+	}
+
+	var rtags [3]*RemoteTag
+	var pos int
+
+	for _, pm := range meta.Projects {
+		for _, it := range pm.IssueTypes {
+			kind := detectKind(it.Name)
+			if kind == kindInvalid {
+				continue
+			}
+			rtags[pos] = &RemoteTag{
+				ID:    it.Id,
+				Label: it.Name,
+				Kind:  kind,
+			}
+			pos++
+		}
+	}
+	return rtags, nil
 }
 
 func (j *Jira) User() (*User, error) {
