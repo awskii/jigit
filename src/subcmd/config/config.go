@@ -122,7 +122,8 @@ func Load() (*Config, error) {
 	c := initDefaultConfig()
 	_, err := toml.DecodeFile(configName, c)
 	if err != nil {
-		return initDefaultConfig(), err
+		fmt.Printf("can't load config: %s\n", err)
+		return c, nil
 	}
 	if c.Editor == "" {
 		c.Editor = os.Getenv("EDITOR")
