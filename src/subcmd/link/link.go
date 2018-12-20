@@ -10,6 +10,7 @@ import (
 	"lib/git"
 	"lib/jira"
 	"lib/storage"
+	"lib/util"
 	"subcmd/config"
 )
 
@@ -35,7 +36,7 @@ func (ln *Cmd) Execute(v []string) error {
 }
 
 func getLinkedJiraIssue(disk *storage.Storage, id int) (*jira.Issue, error) {
-	issueID, err := disk.GetString(storage.BucketIssueLinks, storage.Itob(id))
+	issueID, err := disk.GetString(storage.BucketIssueLinks, util.Itob(id))
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +56,7 @@ func getLinkedGitIssue(disk *storage.Storage, id string) (*git.Issue, error) {
 	if err != nil {
 		return nil, err
 	}
-	return g.Issue(storage.Btoi(issueID))
+	return g.Issue(util.Btoi(issueID))
 }
 
 func extractIDs(argv []string) (gitlabProject string, issueID int, jiraTicket string) {

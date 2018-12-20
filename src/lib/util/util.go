@@ -7,6 +7,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -18,12 +19,12 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-// common helpers
+// AskCredentials gets login and password unencrypted from user's input.
 func AskCredentials(site string) (login string, pass string) {
 	fmt.Printf("Username for '%s': ", site)
 	fmt.Scanf("%s", &login)
 	fmt.Printf("Password for '%s': ", site)
-	b, err := terminal.ReadPassword(int(syscall.Stdin))
+	b, err := terminal.ReadPassword(syscall.Stdin)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -33,9 +34,11 @@ func AskCredentials(site string) (login string, pass string) {
 	return
 }
 
+// AskPassphrase gets encryption key from user and calculates it's SHA256 hash.
+// Input is covered by standard terminal trick.
 func AskPassphrase() []byte {
 	fmt.Printf("Enter passphrase: ")
-	key, err := terminal.ReadPassword(int(syscall.Stdin))
+	key, err := terminal.ReadPassword(syscall.Stdin)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -47,16 +50,20 @@ func AskPassphrase() []byte {
 	return hasher.Sum(nil)
 }
 
+// TruncateString truncates str to witdh if needed and append ... to truncated string.
 func TruncateString(str string, width int) string {
 	l := utf8.RuneCountInString(str)
-	mod := fmt.Sprintf("%%.%ds", width)
-	str = fmt.Sprintf(mod, str)
+	if l <= width {
+		return str
+	}
+	str = fmt.Sprintf(fmt.Sprintf("%%.%ds", width), str)
 	if l > width {
 		str += "..."
 	}
 	return str
 }
 
+// StringToFixedWidth rewrites provided str to fit provided width adding '\n' when needed.
 func StringToFixedWidth(str string, width int) string {
 	str = strings.Replace(str, "{noformat}", "", -1)
 	s := bufio.NewScanner(strings.NewReader(str))
@@ -129,4 +136,14 @@ func Decrypt(key, data []byte) ([]byte, error) {
 	nonce, ciphertext := data[:gcm.NonceSize()], data[gcm.NonceSize():]
 	dec, err := gcm.Open(nil, nonce, ciphertext, nil)
 	return []byte(dec), err
+}
+
+func Itob(v int) []byte {
+	res := make([]byte, 8)
+	binary.BigEndian.PutUint64(res, uint64(v))
+	return res
+}
+
+func Btoi(b []byte) int {
+	return int(binary.BigEndian.Uint64(b))
 }

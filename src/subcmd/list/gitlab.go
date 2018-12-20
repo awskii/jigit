@@ -84,9 +84,10 @@ func renderGitProjectIssues(issues []*git.Issue) {
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetAutoWrapText(false)
 	table.SetBorder(false)
+	table.SetHeader([]string{"ID", "State", "Description", "Link"})
 	for _, issue := range issues {
 		iid := fmt.Sprintf("%d", issue.IID)
-		table.Append([]string{iid, string(issue.State), issue.Title})
+		table.Append([]string{iid, string(issue.State), issue.Title, issue.WebURL})
 	}
 	table.Render()
 	fmt.Printf("\n")
