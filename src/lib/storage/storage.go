@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"crypto/aes"
 	"encoding/binary"
 	"fmt"
 	"github.com/boltdb/bolt"
@@ -154,28 +153,6 @@ func (s *Storage) Invalidate(bucket []byte) error {
 
 func (s *Storage) Close() error {
 	return s.b.Close()
-}
-
-func Encrypt(key []byte, data string) ([]byte, error) {
-	cipher, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	enc := make([]byte, 0)
-	cipher.Encrypt(enc, []byte(data))
-	return enc, nil
-}
-
-func Decrypt(key, data []byte) ([]byte, error) {
-	cipher, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	dec := make([]byte, 0)
-	cipher.Decrypt(dec, data)
-	return dec, nil
 }
 
 func Itob(v int) []byte {

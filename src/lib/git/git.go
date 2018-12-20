@@ -96,25 +96,41 @@ func (git *Git) InitClient() error {
 		return ErrBadEndpoint
 	}
 
-	//key := askPassphrase()
-	key := []byte("key")
+	var key []byte
+	if git.cfg.Storage.Encrypt {
+		key = util.AskPassphrase()
+	}
+
 	login, pass, err := git.credentials(key)
 	if err != nil {
-		// unauthorized
+		// unauthorized, ask credentials
 		login, pass = util.AskCredentials(git.endpoint)
-		//encLogin, _ := persistent.Encrypt(key, login)
-		err := git.storage.Set(storage.BucketAuth, storage.KeyGitlabUser, []byte(login))
-		if err != nil {
-			return err
+		encLogin, encPass := []byte(login), []byte(pass)
+
+		// encode creds if needed
+		if git.cfg.Storage.Encrypt {
+			encLogin, err = util.Encrypt(key, login)
+			if err != nil {
+				return err
+			}
+			encPass, err = util.Encrypt(key, pass)
+			if err != nil {
+				return err
+			}
 		}
-		//encPass, _ := persistent.Encrypt(key, pass)
-		err = git.storage.Set(storage.BucketAuth, storage.KeyGitlabPass, []byte(pass))
+
+		err := git.storage.Set(storage.BucketAuth, storage.KeyGitlabUser, encLogin)
 		if err != nil {
-			return err
+			return fmt.Errorf("can't save git username: %v", err)
+		}
+		err = git.storage.Set(storage.BucketAuth, storage.KeyGitlabPass, encPass)
+		if err != nil {
+			return fmt.Errorf("can't save git password: %v", err)
 		}
 	}
 
 	fmt.Printf("Connecting to '%s'\n", git.endpoint)
+
 	git.client, err = gitlab.NewBasicAuthClient(nil, git.endpoint, login, pass)
 	if err != nil {
 		return err
@@ -378,16 +394,19 @@ func (git *Git) credentials(key []byte) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	//login, err := persistent.Decrypt(key, loginEnc)
-	//if err != nil {
-	//	return "", "", err
-	//}
-	//pass, err := persistent.Decrypt(key, passEnc)
-	//if err != nil {
-	//	return "", "", err
-	//}
-	//return string(login), string(pass), nil
-	return string(loginEnc), string(passEnc), nil
+	if key == nil {
+		return string(loginEnc), string(passEnc), nil
+	}
+
+	login, err := util.Decrypt(key, loginEnc)
+	if err != nil {
+		return "", "", err
+	}
+	pass, err := util.Decrypt(key, passEnc)
+	if err != nil {
+		return "", "", err
+	}
+	return string(login), string(pass), nil
 }
 
 // If name is empty, provided pid will be returned.
