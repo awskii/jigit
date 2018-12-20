@@ -3,8 +3,12 @@ package util
 import (
 	"bufio"
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"runtime"
 	"strings"
@@ -91,4 +95,38 @@ func Debug(format string, argv ...interface{}) {
 			strings.Join(fnameElems[len(fnameElems)-3:], "/"), line, funcNameElems[len(funcNameElems)-1])
 	}
 	fmt.Printf("[DEBUG] "+format+" "+srcFileInfo+"\n", argv...)
+}
+
+// Encrypt encrypts provided data by provided key with AES-256.
+func Encrypt(key []byte, data string) ([]byte, error) {
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+	return []byte(gcm.Seal(nonce, nonce, []byte(data), nil)), nil
+}
+
+// Decrypt decrypts provided data by provided key with AES-256.
+func Decrypt(key, data []byte) ([]byte, error) {
+	c, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce, ciphertext := data[:gcm.NonceSize()], data[gcm.NonceSize():]
+	dec, err := gcm.Open(nil, nonce, ciphertext, nil)
+	return []byte(dec), err
 }
