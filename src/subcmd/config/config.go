@@ -11,9 +11,11 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
+const defaultStoragePath = "/var/lib/jigit/cache"
+
 type Cmd struct {
-	Set  bool `long:"set" description:"save key value pair"`
-	Show bool `long:"show" description:"show current config values"`
+	Set bool `long:"set" description:"save key value pair"`
+	Get bool `long:"get" description:"get current config values"`
 
 	Active bool
 	Argv   []string
@@ -41,7 +43,7 @@ func Process(fl Cmd) error {
 	}
 
 	switch {
-	case fl.Show:
+	case fl.Get:
 		fmt.Println("Current config values are:")
 		fmt.Printf("\teditor: %s\n", cfg.Editor)
 		fmt.Printf("\tgitlab.address: %s\n", cfg.GitLab.Address)
@@ -66,7 +68,7 @@ func Process(fl Cmd) error {
 			fmt.Printf(msg, fl.Argv[0])
 		}
 	default:
-		fmt.Printf("Next items available for configuration:\n\n")
+		fmt.Printf("Next items are available for configuration:\n\n")
 		for _, item := range usages {
 			fmt.Printf(" %s\n", item)
 		}
@@ -92,7 +94,7 @@ var (
 		"URLs configuration\n",
 		"  gitlab.address - <string> address to your GitLab installation",
 		"  jira.address   - <string> address to your JIRA installation",
-		"\n Cache and storage storage configuration\n",
+		"\n Cache and storage configuration\n",
 		"  storage.path      - <string> path to storage storage file",
 		"  storage.encrypt   - <bool>   defines if sensitive data (your tokens at least) should be encrypted",
 		"  storage.off_cache - <bool>   disables projects and issue caches if true",
@@ -104,7 +106,7 @@ var (
 func initDefaultConfig() *Config {
 	c := new(Config)
 	c.Storage.Encrypt = true
-	c.Storage.Path = "/var/local/jigit/cache"
+	c.Storage.Path = defaultStoragePath
 	return c
 }
 
@@ -120,6 +122,15 @@ func expandConfigPath() string {
 // if any error occurred
 func Load() (*Config, error) {
 	c := initDefaultConfig()
+	// check if file exists first
+	if _, err := os.Stat(configName); err != nil {
+		// if err != os.ErrNotExist {
+		// 	fmt.Fprintf(os.Stderr, "couldn't open configuration file %q: %v", configName, err)
+		// 	return nil, err
+		// }
+		c.save()
+		return c, nil
+	}
 	_, err := toml.DecodeFile(configName, c)
 	if err != nil {
 		fmt.Printf("can't load config: %s\n", err)
@@ -130,6 +141,16 @@ func Load() (*Config, error) {
 	}
 	if !path.IsAbs(c.Storage.Path) {
 		return nil, errors.New("please, specify full path to cache file")
+	}
+
+	if c.Storage.Path == defaultStoragePath {
+		// check if file exists. It should be a directory, but that isn't mine problem.
+		_, err := os.Stat(path.Dir(defaultStoragePath))
+		if err != nil {
+			if err := os.Mkdir(path.Dir(defaultStoragePath), 0600); err != nil {
+				return nil, err
+			}
+		}
 	}
 	return c, nil
 }
