@@ -5,20 +5,19 @@ import (
 	"time"
 )
 
-const commentTime = time.RFC850
-
-var (
+const (
+	commentTime   = time.RFC850
 	textWidthSize = 100
 
 	sepIssue   = " ======================================\n"
 	sepComment = " --------------------------------------\n"
-
-	ErrBadAddress = errors.New("bad address provided")
 )
+
+var ErrBadAddress = errors.New("bad address provided")
 
 type Cmd struct {
 	JiraMode    bool     `short:"j" long:"jira" description:"if provided, listings will be fetched from Jira instead of GitLab"`
-	Assigned    bool     `short:"a" long:"assigned" description:"show all issues assigned to me"`
+	Assigned    bool     `short:"a" long:"assigned" description:"show all issues assigned to you"`
 	Projects    bool     `short:"P" description:"list projects instead of issues"`
 	ProjectName string   `short:"p" long:"project" description:"project name to get issues on"`
 	ProjectID   int      `long:"pid" description:"project ID to get issues on"`

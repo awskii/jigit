@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"encoding/binary"
 	"fmt"
+
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 )
@@ -153,14 +153,4 @@ func (s *Storage) Invalidate(bucket []byte) error {
 
 func (s *Storage) Close() error {
 	return s.b.Close()
-}
-
-func Itob(v int) []byte {
-	res := make([]byte, 8)
-	binary.BigEndian.PutUint64(res, uint64(v))
-	return res
-}
-
-func Btoi(b []byte) int {
-	return int(binary.BigEndian.Uint64(b))
 }
